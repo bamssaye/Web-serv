@@ -1,6 +1,7 @@
 #pragma once
 #include "webserv.h"
 #include "Parser.hpp"
+#include "client.hpp"
 
 class InfoSocket{
 
@@ -49,12 +50,13 @@ int InfoSocket::setFd(int fd){ this->_fd = fd; return this->_fd < 0;}
 
 ///////
 
-class Server : public InfoSocket, public Parser {//}, public StatusCode {
+class Server : public InfoSocket {//}, public StatusCode {
 
-	// std::map <int, Client *>	_Clients;
+	std::map <int, Client>	_Clients;
 	epoll_event					_events[MAX_EVENTS];
 	int 						_epollFd;
 	int							_oP;
+	std::vector<ServerConfig>&	_servers;
 	int							_setNonBlocking(int fd);
 	void						_Msg(std::string m);
 	void						_MsgErr(std::string m);
@@ -62,9 +64,10 @@ class Server : public InfoSocket, public Parser {//}, public StatusCode {
 	void						_closeCon(int FdClient);
 	bool						_isNewClient(int FdClient);
 	void						_AcceptCon(int FdServer);
+	void						_ClientRead(int cliFd);
+	void						_ClientWrite(int cliFd);
 public:
-	Server (const std::string& filename);
-
+	Server (std::vector<ServerConfig>& servers);
 	void initServer();
 	void runServer();
 	
@@ -110,7 +113,7 @@ void Server::_AcceptCon(int FdServer){
 			continue;
 		}
 		// store client data;
-		// Clients[cliFd] = new Client(cliFd, static_cast<StatusCode&>(*this), _servers[0]); // sserver 0 cs have one server
+		_Clients[cliFd] = Client(cliFd, cliAdd); // sserver 0 cs have one server
 	}
 
 }

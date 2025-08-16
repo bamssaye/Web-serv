@@ -2,44 +2,16 @@
 
 #include "webserv.h"
 
-struct LocationConfig {
-    std::string              path;
-    std::string              root;
-    std::string              index;
-    std::string              cgi_pass;
-    bool                     autoindex;
-    std::vector<Methods>     allowed_methods;
-    int                      return_code;
-    std::string              return_url;
-    std::string              upload_path;
-    std::vector<std::string> cgi_extensions;
-
-    LocationConfig();
-};
-
-struct ServerConfig {
-    unsigned long                host;
-    int                          port;
-    std::string                  root;
-    std::vector<std::string>     server_names;
-    long                         client_max_body_size;
-    std::map<int, std::string>   error_pages;
-    // std::pair<std::vector<int>, std::string> error_pages;
-    std::vector<LocationConfig>  locations;
-
-    ServerConfig();
-};
-
 class Parser {
 public:
     Parser(const std::string& filename);
     ~Parser();
 
     void parse();
-    const std::vector<ServerConfig>& getServers() const;
+    std::vector<ServerConfig>& getServers();
     void displayConfigs();
 
-protected:
+private:
     std::string               _filename;
     std::vector<ServerConfig> _servers;
 

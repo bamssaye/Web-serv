@@ -1,9 +1,10 @@
 #include "../inc/server.hpp"
-Server::Server (const std::string& filename) : InfoSocket(), Parser(filename), _oP(1){
+
+
+
+Server::Server (std::vector<ServerConfig>& servers) : InfoSocket(), _oP(1), _servers(servers){
 	try
 	{
-		Parser::parse();
-		Parser::displayConfigs();
         this->initServer();
         while(1);
 	}
@@ -68,7 +69,40 @@ void Server::_handleEvent(const epoll_event& ev){
         if (ev.events & EPOLLIN){ _AcceptCon(ev_fd); }
     }
     else{
-        if (ev.events & EPOLLIN){ }// ClientRead(ev_fd);}
-        else if (ev.events & EPOLLOUT){ }// ClientWrite(ev_fd);}
+        if (ev.events & EPOLLIN){ _ClientRead(ev_fd);}
+        else if (ev.events & EPOLLOUT){ _ClientWrite(ev_fd);}
+    }
+}
+void Server::_ClientRead(int cliFd){
+    char buffer[BUFFER_SIZE];
+    ssize_t bytes;
+    
+    if (_Clients.find(cliFd) == _Clients.end())
+        return;
+    bytes = recv(cliFd, buffer, BUFFER_SIZE - 1, 0);
+    if (bytes > 0){
+        _Clients[cliFd].addBuffer(buffer, bytes);
+        if (_Clients[cliFd].requCheck){
+            _Clients[cliFd].setRequest();
+        } 
+    }
+    else if (bytes == 0){
+        this->_closeCon(cliFd);   
+    }
+}
+void Server::_ClientWrite(int cliFd){
+    if (_Clients.find(cliFd) == _Clients.end())
+        return;
+    while(_Clients[cliFd].dataPending()){
+        ssize_t bySent = send(cliFd, _Clients[cliFd].getdataPending(), _Clients[cliFd].getSizePending(), MSG_NOSIGNAL);
+        if (bySent > 0){
+            _Clients[cliFd].dataSent(bySent);
+        }
+    }
+    if (!_Clients[cliFd].getdataPending()) {
+            epoll_event event;
+            event.events = EPOLLIN | EPOLLET;
+            event.data.fd = cliFd;
+            epoll_ctl(this->_epollFd, EPOLL_CTL_MOD, cliFd, &event);
     }
 }

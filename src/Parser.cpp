@@ -48,7 +48,7 @@ bool check_duplicate_location(const std::vector<LocationConfig>& locations, cons
     return false;
 }
 
-const std::vector<ServerConfig>& Parser::getServers() const {
+std::vector<ServerConfig>& Parser::getServers() {
     return this->_servers;
 }
 

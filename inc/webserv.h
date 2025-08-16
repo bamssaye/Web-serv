@@ -32,6 +32,7 @@
 #include <exception>
 
 #include <errno.h>
+#include <ctime>
 
 #define MAX_EVENTS 1024
 #define BUFFER_SIZE 4096
@@ -50,5 +51,34 @@ enum Methods
 	DELETE,
 	POST,
 };
+
+struct LocationConfig {
+    std::string              path;
+    std::string              root;
+    std::string              index;
+    std::string              cgi_pass;
+    bool                     autoindex;
+    std::vector<Methods>     allowed_methods;
+    int                      return_code;
+    std::string              return_url;
+    std::string              upload_path;
+    std::vector<std::string> cgi_extensions;
+
+    LocationConfig();
+};
+
+struct ServerConfig {
+    unsigned long                host;
+    int                          port;
+    std::string                  root;
+    std::vector<std::string>     server_names;
+    long                         client_max_body_size;
+    std::map<int, std::string>   error_pages;
+    // std::pair<std::vector<int>, std::string> error_pages;
+    std::vector<LocationConfig>  locations;
+
+    ServerConfig();
+};
+
 
 #endif

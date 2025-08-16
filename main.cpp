@@ -5,8 +5,14 @@ int main(int argc, char **argv) {
         std::cerr << "Usage: " << argv[0] << " <path_to_config_file>" << std::endl;
         return 1;
     }
-	
-    Server server(argv[1]);
+	try{
+        Parser Parser(argv[1]);
+        Parser.parse();
+		Parser.displayConfigs();
+        Server server(Parser.getServers());
+    }catch(std::exception& e){
+        std::cerr << e.what() << std::endl;
+    }
 
     return 0;
 }
