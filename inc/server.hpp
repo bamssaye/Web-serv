@@ -1,8 +1,8 @@
 #pragma once
 #include "webserv.h"
 #include "Parser.hpp"
-#include "client.hpp"
-
+#include "../inc/client.hpp"
+class Client;
 class InfoSocket{
 
 protected:
@@ -52,7 +52,7 @@ int InfoSocket::setFd(int fd){ this->_fd = fd; return this->_fd < 0;}
 
 class Server : public InfoSocket {//}, public StatusCode {
 
-	std::map <int, Client>	_Clients;
+	std::map <int, Client>		_Clients;
 	epoll_event					_events[MAX_EVENTS];
 	int 						_epollFd;
 	int							_oP;

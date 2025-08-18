@@ -1,6 +1,5 @@
 #include "../inc/server.hpp"
-
-
+// #include "../inc/client.hpp"
 
 Server::Server (std::vector<ServerConfig>& servers) : InfoSocket(), _oP(1), _servers(servers){
 	try
