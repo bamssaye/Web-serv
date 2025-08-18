@@ -95,6 +95,10 @@ std::vector<std::string> Parser::tokenize(const std::string& content) {
 void Parser::parseServerDirective(const std::vector<std::string>& tokens, size_t& i, ServerConfig& config) {
     std::string key = tokens[i++];
 
+    ///
+        config.listen[custom_inet_addr("127.0.0.1")] = 8080;
+        config.listen[custom_inet_addr("127.0.0.2")] = 8085;
+    ///
     if (key == "listen") {
         std::string val = tokens[i++];
         size_t colon = val.find(':');

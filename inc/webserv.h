@@ -76,9 +76,16 @@ struct ServerConfig {
     std::map<int, std::string>   error_pages;
     // std::pair<std::vector<int>, std::string> error_pages;
     std::vector<LocationConfig>  locations;
+    std::map<unsigned long, int> listen; // to check
 
     ServerConfig();
 };
 
-
+// template <typename T>
+// std::string _toString(T value)
+// {
+//     std::ostringstream oss;
+//     oss << value;
+//     return oss.str();
+// }
 #endif
