@@ -90,7 +90,8 @@ void Server::_handleEvent(const epoll_event& ev){
     int ev_fd = ev.data.fd;
 
     if (ev.events & (EPOLLERR | EPOLLHUP)){
-        _MsgErr("Client Error on Fd : " + ev_fd);
+
+        _MsgErr("Client Error on Fd : " + _toString(ev_fd));
         _closeCon(ev_fd);
         return;
     }
@@ -120,7 +121,7 @@ void Server::_ClientRead(int cliFd){
     }
 }
 void Server::_ClientWrite(int cliFd){
-    std::cerr << "READ file  : " << std::endl;
+    // std::cerr << "READ file  : " << std::endl;
     if (_Clients.find(cliFd) == _Clients.end())
         return;
    

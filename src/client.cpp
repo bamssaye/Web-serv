@@ -6,8 +6,9 @@
 
 Client::Client():_fd(-1), _bySent(0),_lastActive(0), requCheck(false){}
 
-Client::Client(int cliFd, sockaddr_in& cliAdd):_fd(cliFd) ,_bySent(0) ,_cliAdd(cliAdd), requCheck(false){
+Client::Client(int cliFd, sockaddr_in& cliAdd):_fd(cliFd) ,_bySent(0) , requCheck(false){
     this->_lastActive = time(NULL);
+    this->_cliAdd = cliAdd;
 }
 
 Client::~Client(){}
@@ -57,7 +58,13 @@ void Client::setRequest(int epollFd){
     event.data.fd = this->_fd;
     epoll_ctl(epollFd, EPOLL_CTL_MOD, this->_fd, &event);
 }
-
+template <typename T>
+std::string _tString(T value)
+{
+    std::ostringstream oss;
+    oss << value;
+    return oss.str();
+}
 void Client::GetRequest(Request& req, Response& res){
     // struct stat st;
     // std::string Uri = req.getUri();
@@ -67,17 +74,38 @@ void Client::GetRequest(Request& req, Response& res){
     (void)req;
     (void)res;
     // std::cout << "------------0-0-0-0-0-0-0-0-0-0-0-0-0-" << std::endl;
-    std::ifstream file("mo1.mp4");
-    if (file.is_open()){
-        std::cout << "------------0-0-0-0-0-0-0-0-0-0-0-0-0-" << std::endl;
+
+    // std::ostringstream res;
+	// res << "HTTP/1.1 200 OK\r\n";
+	// res << "Content-Type: " << "video/mp4" << "\r\n";
+	// res << "Content-Length: " << content.str().size() << "\r\n";
+	// res << "\r\n";
+	// res << content.str();
+    // _respoBuf = 
+    std::ifstream file("src/ds.jpeg", std::ios::binary);
+    
+    if (!file.is_open()){
+        std::cout << "------=0-" << std::endl;
     }
-        // std::cout << "errr" << std::endl;
-    if (!file.eof()) {
+    file.seekg(0, std::ios::end);
+    std::streampos ds = file.tellg();
+    file.seekg(0, std::ios::beg);
+    std::ostringstream ress;
+	
+    while(!file.eof()){
+        
         file.read(_buffer, sizeof(_buffer));
-        // size_t bytesRead = file.gcount();
-        _respoBuf = _buffer;
-        // ssize_t sent = send(_fd, _buffer, bytesRead, 0);
-    } else {
+        std::streamsize bytesRead = file.gcount();
+        ress << "HTTP/1.1 200 OK\r\n";
+	    ress << "Content-Type: " << "image/jpeg" << "\r\n";
+	    ress << "Content-Length: " << _tString(ds) << "\r\n";
+	    ress << "\r\n";
+        _respoBuf = ress.str();
+        // 
+        _respoBuf.append(_buffer, bytesRead);
+        std::cout << "------------0-0-0-0-0-0-0-0-0-0-0-0-0- \n"  << _respoBuf<< std::endl;
+    } 
+    if (file.eof()){
         file.close();
         close(_fd);
         // sending_file = false;
@@ -85,34 +113,3 @@ void Client::GetRequest(Request& req, Response& res){
 
 }
 
-// std::string Client::getResponse(){
-//     std::ifstream file("../html/mo1.mp4");
-//      if (!file.eof()) {
-//         file.read(buffer, sizeof(client.buffer));
-//         size_t bytesRead = client.file.gcount();
-//         ssize_t sent = send(client.fd, client.buffer, bytesRead, 0);
-//         if (sent == -1 && errno == EAGAIN) {
-//             // السوكيت ماقدّش يكتب دابا → نستناو event آخر
-//         }
-//     } else {
-//         // سالينا الملف
-//         client.file.close();
-//         close(client.fd);
-//         client.sending_file = false;
-//     }
-// 	if (!file.is_open())
-// 		return ErrorResponse(500);
-//     std::ostringstream content;
-// 	content << file.rdbuf();
-// 	file.close();
-//     std::ostringstream res;
-// 	res << "HTTP/1.1 200 OK\r\n";
-// 	res << "Content-Type: " << "video/mp4" << "\r\n";
-// 	res << "Content-Length: " << content.str().size() << "\r\n";
-// 	res << "\r\n";
-// 	res << content.str();
-
-//     std::cout   << std::string(50, '*')
-//                 << res.str() << std::endl;
-//     return res.str();
-// }
