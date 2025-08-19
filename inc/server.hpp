@@ -40,7 +40,7 @@ public:
 ///////
 class Server : public InfoSocket {//}, public StatusCode {
 
-	std::map <int, Client>		_Clients;
+	std::map <int, Client*>		_Clients;
 	epoll_event					_events[MAX_EVENTS];
 	int 						_epollFd;
 	int							_oP;
@@ -57,6 +57,7 @@ class Server : public InfoSocket {//}, public StatusCode {
 	void						_ClientWrite(int cliFd);
 public:
 	Server (ServerConfig& servers);
+	~Server();
 	void initServer();
 	void runServer();
 	

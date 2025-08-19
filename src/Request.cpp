@@ -26,8 +26,8 @@ void Request::_parseRequestLine(std::string& RqLine){
         _uriPath = _uriPath.substr(0, queryPos);
     }
     for(int i = 0; i < 4 ; i++){
-        if (i == 3)
-            _isvalid = true;
+        // if (i == 3)
+        //     _isvalid = true;
         if (Methods[i] == _method)
             break;
     }

@@ -10,7 +10,9 @@ class Client{
     std::string     _respoBuf;
     ssize_t          _bySent;
     time_t          _lastActive;
-    char            _buffer[8192];
+    // char            _buffer[8192];
+    std::ifstream   _file;
+    bool            _sendingFile;
     sockaddr_in     _cliAdd;
 public:
     Client();
@@ -22,6 +24,7 @@ public:
     bool            dataPending();
     const char*     getdataPending();
     size_t          getSizePending();
+    bool            getsendingFile();
     //
     void            addBuffer(char *buf, ssize_t byRead);
     void            clearRequs();
@@ -30,6 +33,7 @@ public:
     //
     void            setRequest(int epollFd);
     // void            setResponse();
+    void loadNextChunk();
 
     //
     void GetRequest(Request& req, Response& res);

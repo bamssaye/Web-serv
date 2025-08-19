@@ -14,6 +14,11 @@ Server::Server (ServerConfig& servers) : InfoSocket(), _oP(1), _server(servers){
 		exit(EXIT_FAILURE);
 	}
 }
+Server::~Server(){
+    for (std::map<int, Client*>::iterator it = _Clients.begin(); it != _Clients.end(); ++it)
+        delete it->second;
+    _Clients.clear();
+}
 int Server::_setNonBlocking(int fd){
     int f = fcntl(fd, F_GETFL, 0);
     if (f == -1)
@@ -111,9 +116,9 @@ void Server::_ClientRead(int cliFd){
         return;
     bytes = recv(cliFd, buffer, BUFFER_SIZE - 1, 0);
     if (bytes > 0){
-        _Clients[cliFd].addBuffer(buffer, bytes);
-        if (_Clients[cliFd].requCheck){
-            _Clients[cliFd].setRequest(this->_epollFd);
+        _Clients[cliFd]->addBuffer(buffer, bytes);
+        if (_Clients[cliFd]->requCheck){
+            _Clients[cliFd]->setRequest(this->_epollFd);
         } 
     }
     else if (bytes == 0){
@@ -121,17 +126,23 @@ void Server::_ClientRead(int cliFd){
     }
 }
 void Server::_ClientWrite(int cliFd){
-    // std::cerr << "READ file  : " << std::endl;
     if (_Clients.find(cliFd) == _Clients.end())
         return;
-   
-    while(_Clients[cliFd].dataPending()){
-        ssize_t bySent = send(cliFd, _Clients[cliFd].getdataPending(), _Clients[cliFd].getSizePending(), MSG_NOSIGNAL);
+    if (!_Clients[cliFd]->dataPending() && _Clients[cliFd]->getsendingFile()) {
+        _Clients[cliFd]->loadNextChunk();
+        // std::cout << "Ss" << std::endl;
+    }
+    while(_Clients[cliFd]->dataPending()){
+        ssize_t bySent = send(cliFd, _Clients[cliFd]->getdataPending(), _Clients[cliFd]->getSizePending(), MSG_NOSIGNAL);
         if (bySent > 0){
-            _Clients[cliFd].dataSent(bySent);
+            _Clients[cliFd]->dataSent(bySent);
+        }
+        if (!_Clients[cliFd]->dataPending() && _Clients[cliFd]->getsendingFile()) {
+            _Clients[cliFd]->loadNextChunk();
+            // std::cout << "Ss2" << std::endl;
         }
     }
-    if (!_Clients[cliFd].getdataPending()) {
+    if (!_Clients[cliFd]->getdataPending() && !_Clients[cliFd]->getsendingFile()) {
             epoll_event event;
             event.events = EPOLLIN | EPOLLET;
             event.data.fd = cliFd;
@@ -141,8 +152,12 @@ void Server::_ClientWrite(int cliFd){
 void Server::_MsgErr(std::string m){ std::cerr << m << std::endl;}
 void Server::_closeCon(int FdClient){
         epoll_ctl(_epollFd, EPOLL_CTL_DEL, FdClient, NULL);
+        std::map<int, Client*>::iterator it = _Clients.find(FdClient);
+        if (it != _Clients.end()) {
+            delete it->second;
+           _Clients.erase(it);
+        }
         close(FdClient);
-        _Clients.erase(FdClient);
         this->_Msg("Connection closed: Client id = " + this->_toString(FdClient));
 }
 bool Server::_isNewClient(int FdClient){ //to check
@@ -179,7 +194,7 @@ void Server::_AcceptCon(int FdServer){
 			continue;
 		}
 		// store client data;
-		_Clients[cliFd] = Client(cliFd, cliAdd); // sserver 0 cs have one server
+		_Clients[cliFd] = new Client(cliFd, cliAdd); // sserver 0 cs have one server
 	}
 
 }
