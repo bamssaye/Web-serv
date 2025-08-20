@@ -1,8 +1,49 @@
 #include "../inc/Parser.hpp"
 
-LocationConfig::LocationConfig() : autoindex(false), return_code(0) {}
-ServerConfig::ServerConfig() : host(0), port(80), client_max_body_size(1048576) {}
+// --- Copy Constructors and Assignment Operators (THE FIX) ---
+LocationConfig::LocationConfig(const LocationConfig& other) {
+    *this = other;
+}
 
+LocationConfig& LocationConfig::operator=(const LocationConfig& other) {
+    if (this != &other) {
+        path = other.path;
+        root = other.root;
+        index = other.index;
+        cgi = other.cgi;
+        autoindex = other.autoindex;
+        allowed_methods = other.allowed_methods;
+        return_code = other.return_code;
+        return_url = other.return_url;
+        upload_path = other.upload_path;
+        cgi_params = other.cgi_params;
+    }
+    return *this;
+}
+
+ServerConfig::ServerConfig(const ServerConfig& other) {
+    *this = other;
+}
+
+ServerConfig& ServerConfig::operator=(const ServerConfig& other) {
+    if (this != &other) {
+        // host = other.host;
+        // port = other.port;
+        listen = other.listen;
+        host_str = other.host_str;
+        client_max_body_size = other.client_max_body_size;
+        error_pages = other.error_pages;
+        locations = other.locations;
+    }
+    return *this;
+}
+// ---------------------------------------------------------
+
+LocationConfig::LocationConfig() : autoindex(false), return_code(0) {}
+ServerConfig::ServerConfig() : client_max_body_size(1048576) {
+    // listen.push_back(std::make_pair(0, 80));
+    // Default listen on port 80
+}
 Parser::Parser(const std::string& filename) : _filename(filename) {}
 Parser::~Parser() {}
 
@@ -11,9 +52,22 @@ void Parser::parse() {
     std::vector<std::string> tokens = this->tokenize(content);
 
     size_t i = 0;
+    size_t ser_size = 0;
+    bool server_found = false;
+    for(size_t y = 0; y < tokens.size(); ++y) {
+        if (tokens[y] == "server") {
+            ser_size++;
+            if (ser_size > 1) {
+                throw std::runtime_error("Error: Multiple server blocks found in the configuration file.");
+            }
+            if (i != 0) {
+                throw std::runtime_error("Error: Server block must be the first directive in the configuration file.");
+            }
+        }
+    }
     while (i < tokens.size()) {
         if (tokens[i] == "server") {
-            ServerConfig serverConf;
+            server_found = true;
             i++;
             if (i >= tokens.size() || tokens[i] != "{") {
                 throw std::runtime_error("Syntax error: expected '{' after 'server'");
@@ -21,21 +75,21 @@ void Parser::parse() {
             i++;
 
             while (i < tokens.size() && tokens[i] != "}") {
-                this->parseServerDirective(tokens, i, serverConf);
+                this->parseServerDirective(tokens, i, _server);
             }
 
             if (i >= tokens.size() || tokens[i] != "}") {
                  throw std::runtime_error("Syntax error: server block not closed with '}'");
             }
             i++;
-            _servers.push_back(serverConf);
         } else {
             throw std::runtime_error("Syntax error: unknown directive outside server block: " + tokens[i]);
         }
     }
-    if (_servers.empty()) {
+    if (!server_found) {
         throw std::runtime_error("Error: No server is configured in the file.");
     }
+    validateListenDirectives(_server.listen);
 
 }
 
@@ -48,9 +102,9 @@ bool check_duplicate_location(const std::vector<LocationConfig>& locations, cons
     return false;
 }
 
-std::vector<ServerConfig>& Parser::getServers() {
-    return this->_servers;
-}
+// const ServerConfig& Parser::getServers() const {
+//     return this->_server;
+// }
 
 std::string Parser::readFile() {
     std::ifstream file(this->_filename.c_str());
@@ -95,29 +149,33 @@ std::vector<std::string> Parser::tokenize(const std::string& content) {
 void Parser::parseServerDirective(const std::vector<std::string>& tokens, size_t& i, ServerConfig& config) {
     std::string key = tokens[i++];
 
-    ///
-        config.listen[custom_inet_addr("127.0.0.1")] = 8080;
-        config.listen[custom_inet_addr("127.0.0.2")] = 8085;
-    ///
     if (key == "listen") {
         std::string val = tokens[i++];
         size_t colon = val.find(':');
+        unsigned long host_addr = 0;
+        unsigned short port_num = 80;
+        std::string host_str_val;
         if (colon != std::string::npos) {
-            config.host = custom_inet_addr(val.substr(0, colon));
+            host_str_val = val.substr(0, colon);
+            if (host_str_val == "localhost")
+                host_addr = custom_inet_addr("127.0.0.1");
+            else
+                host_addr = custom_inet_addr(host_str_val);
             std::string portStr = val.substr(colon + 1);
-            validatePort(portStr);
-            config.port = std::atoi(portStr.c_str());
+            // validatePort(portStr);
+            port_num = static_cast<unsigned short>(std::atoi(portStr.c_str()));
         } else {
-            validatePort(val);
-            config.port = std::atoi(val.c_str());
+            host_str_val = val;
+            if (host_str_val == "localhost")
+                host_addr = custom_inet_addr("127.0.0.1");
+            else
+                host_addr = custom_inet_addr(host_str_val);
+            port_num = 80;
         }
-        // validateHost(config.host);
-    } else if (key == "server_name") {
-        while (i < tokens.size() && tokens[i] != ";") config.server_names.push_back(tokens[i++]);
-    } else if (key == "root") {
-        config.root = tokens[i++];
-        validateRoot(config.root);
-    } else if (key == "client_max_body_size") {
+        config.listen.push_back(std::make_pair(host_addr, port_num));
+        config.host_str.push_back(host_str_val);
+    }
+    else if (key == "client_max_body_size") {
         std::string value = tokens[i++];
         char unit = ' ';
         if (!value.empty() && std::isalpha(value[value.size() - 1])) {
@@ -128,6 +186,9 @@ void Parser::parseServerDirective(const std::vector<std::string>& tokens, size_t
         long size = std::atol(value.c_str());
         if (unit == 'K') size *= 1024;
         else if (unit == 'M') size *= 1024 * 1024;
+        if (size > 1073741824) {
+            throw std::runtime_error("Error: client_max_body_size exceeds 1GB limit.");
+        }
         config.client_max_body_size = size;
     } else if (key == "error_page") {
         std::string codeStr = tokens[i++];
@@ -144,9 +205,6 @@ void Parser::parseServerDirective(const std::vector<std::string>& tokens, size_t
         if (i >= tokens.size() || tokens[i] != "{") throw std::runtime_error("Syntax error: expected '{' after location path.");
         i++;
         while(i < tokens.size() && tokens[i] != "}") parseLocationDirective(tokens, i, locConf);
-        if (locConf.cgi_pass.empty() && !locConf.cgi_extensions.empty()) {
-            throw std::runtime_error("Error: cgi_pass must be set if cgi_extensions are defined.");
-        }
         if (i >= tokens.size() || tokens[i] != "}") throw std::runtime_error("Syntax error: location block not closed with '}'");
         i++;
         config.locations.push_back(locConf);
@@ -174,14 +232,19 @@ void Parser::parseLocationDirective(const std::vector<std::string>& tokens, size
         validateAutoindex(val);
         locConf.autoindex = (val == "on");
     } else if (key == "cgi_pass") {
-        locConf.cgi_pass = tokens[i++];
+        if (i + 1 >= tokens.size() || tokens[i+1] == ";") {
+            throw std::runtime_error("Syntax error: cgi_pass requires an extension and a path.");
+        }
+        std::string ext = tokens[i++];
+        std::string path = tokens[i++];
+        locConf.cgi[ext] = path;
     } else if (key == "allowed_methods") {
-        std::vector<Methods> methods;
+        std::vector<std::string> methods;
         while (i < tokens.size() && tokens[i] != ";") {
             std::string method = tokens[i++];
-            if (method == "GET") methods.push_back(GET);
-            else if (method == "POST") methods.push_back(POST);
-            else if (method == "DELETE") methods.push_back(DELETE);
+            if (method == "GET") methods.push_back("GET");
+            else if (method == "POST") methods.push_back("POST");
+            else if (method == "DELETE") methods.push_back("DELETE");
             else throw std::runtime_error("Error: Unsupported method: " + method);
         }
         validateMethods(methods);
@@ -196,11 +259,15 @@ void Parser::parseLocationDirective(const std::vector<std::string>& tokens, size
     } else if (key == "upload_path") {
         locConf.upload_path = tokens[i++];
         validateRoot(locConf.upload_path);
-    } else if (key == "cgi_extension") {
-        while (i < tokens.size() && tokens[i] != ";") {
-            locConf.cgi_extensions.push_back(tokens[i++]);
+    } else if (key == "cgi_params") {
+        if (i + 1 >= tokens.size() || tokens[i+1] == ";") {
+            throw std::runtime_error("Syntax error: cgi_param requires a key and a value.");
         }
-    } else {
+        std::string param_key = tokens[i++];
+        std::string param_value = tokens[i++];
+        locConf.cgi_params[param_key] = param_value;
+    }
+    else {
         throw std::runtime_error("Error: Unknown location directive: " + key);
     }
     if (i >= tokens.size() || tokens[i] != ";") {
@@ -227,38 +294,34 @@ void Parser::validatePort(const std::string& portStr) {
 }
 
 void Parser::validateHost(const std::string& host) {
-    if (host != "localhost" && host != "0.0.0.0") {
-
-    }
+    (void)host;
 }
 
-void Parser::validateRoot(const std::string& path) {
-    if (path.empty() || path[0] != '/') {
-        throw std::runtime_error("Error: Path '" + path + "' must be an absolute path.");
-    }
+void Parser::validateRoot(std::string& path) {
+    (void)path;
 }
 
-void Parser::validateMethods(const std::vector<Methods>& methods) {
+void Parser::validateMethods(const std::vector<std::string>& methods) {
     if (methods.empty()) {
         throw std::runtime_error("Error: The 'allowed_methods' directive cannot be empty.");
     }
     for (size_t i = 0; i < methods.size(); ++i) {
-        if (methods[i] != GET && methods[i] != POST && methods[i] != DELETE) {
+        if (methods[i] != "GET" && methods[i] != "POST" && methods[i] != "DELETE") {
             throw std::runtime_error("Error: Unsupported HTTP method.");
         }
     }
 }
 
 void Parser::validateReturnCode(int code) {
-    if (code < 300 || code >= 400) {
+    if (code != 301 && code != 302) {
         std::stringstream ss;
-        ss << "Error: Invalid redirect code: " << code << ". Must be between 300 and 399.";
+        ss << "Error: Invalid redirect code: " << code << ". Must be 301 or 302.";
         throw std::runtime_error(ss.str());
     }
 }
 
 void Parser::validateErrorPageCode(int code) {
-    if (code < 400 || code >= 600) {
+    if (!((code >= 400 && code <= 404) || (code >= 500 && code <= 504))) {
         std::stringstream ss;
         ss << "Error: Invalid error code for error_page: " << code << ". Must be between 400 and 599.";
         throw std::runtime_error(ss.str());
@@ -272,53 +335,51 @@ void Parser::validateAutoindex(const std::string& val) {
 }
 
 void Parser::displayConfigs() {
-    const std::vector<ServerConfig>& servers = this->getServers();
-    for (size_t i = 0; i < servers.size(); ++i) {
-        const ServerConfig& s = servers[i];
-        std::cout << "\n\033[1;34m## Server #" << i + 1 << " ##\033[0m\n";
-        std::cout << "  \033[1mHost:\033[0m " << s.host << ":" << s.port << "\n";
-        std::cout << "  \033[1mRoot:\033[0m " << s.root << "\n";
-        std::cout << "  \033[1mServer Names:\033[0m ";
-        for (size_t j = 0; j < s.server_names.size(); ++j) {
-            std::cout << s.server_names[j] << " ";
+    const ServerConfig& s = this->_server;
+    std::cout << "\n\033[1;34m## Server ##\033[0m\n";
+    std::cout << "  \033[1mListen:\033[0m ";
+    for (size_t i = 0; i < s.listen.size(); ++i)
+    {
+        std::cout << s.listen[i].first << ":" << s.listen[i].second <<
+
+            (i < s.listen.size() - 1 ? ", " : "");
+    }
+    std::cout << "\n  \033[1mClient Max Body Size:\033[0m " << s.client_max_body_size << " bytes\n";
+    std::cout << "  \033[1mError Pages:\033[0m ";
+    for (std::map<int, std::string>::const_iterator it = s.error_pages.begin(); it != s.error_pages.end(); ++it) {
+        std::cout << it->first << " -> " << it->second << "     ";
+    }
+    std::cout << "\n";
+    std::cout << "  \033[1mLocations (" << s.locations.size() << "):\033[0m\n";
+    for (size_t k = 0; k < s.locations.size(); ++k) {
+        const LocationConfig& l = s.locations[k];
+        std::cout << "    \033[1;32m-> Location Path:\033[0m " << l.path << "\n";
+        std::cout << "      - Root: " << l.root << "\n";
+        std::cout << "      - Index: " << l.index << "\n";
+        std::cout << "      - Autoindex: " << (l.autoindex ? "on" : "off") << "\n";
+        if (l.return_code != 0) {
+            std::cout << "      - Redirect: " << l.return_code << " -> " << l.return_url << "\n";
         }
-        std::cout << "\n  \033[1mClient Max Body Size:\033[0m " << s.client_max_body_size << " bytes\n";
-   
-        std::cout << "  \033[1mError Pages:\033[0m ";
-        for (std::map<int, std::string>::const_iterator it = s.error_pages.begin(); it != s.error_pages.end(); ++it) {
-            std::cout << it->first << " -> " << it->second << "     ";
+        std::cout << "      - Allowed Methods: ";
+        for (size_t m = 0; m < l.allowed_methods.size(); ++m) {
+            std::cout << l.allowed_methods[m] << " ";
         }
         std::cout << "\n";
-        std::cout << "  \033[1mLocations (" << s.locations.size() << "):\033[0m\n";
-        for (size_t k = 0; k < s.locations.size(); ++k) {
-            const LocationConfig& l = s.locations[k];
-            std::cout << "    \033[1;32m-> Location Path:\033[0m " << l.path << "\n";
-            std::cout << "      - Root: " << l.root << "\n";
-            std::cout << "      - Index: " << l.index << "\n";
-            std::cout << "      - Autoindex: " << (l.autoindex ? "on" : "off") << "\n";
-            if (l.return_code != 0) {
-                std::cout << "      - Redirect: " << l.return_code << " -> " << l.return_url << "\n";
-            }
-            std::cout << "      - Allowed Methods: ";
-            for (size_t m = 0; m < l.allowed_methods.size(); ++m) {
-                std::cout << l.allowed_methods[m] << " ";
-            }
-            std::cout << "\n";
-            std::cout << "      - CGI Pass: " << l.cgi_pass << "\n";
-            if (!l.upload_path.empty()) {
-                std::cout << "      - Upload Path: " << l.upload_path << "\n";
-            }
-            if (!l.cgi_extensions.empty()) {
-                std::cout << "      - CGI Extensions: ";
-                for (size_t j = 0; j < l.cgi_extensions.size(); ++j) {
-                    std::cout << l.cgi_extensions[j] << " ";
-                }
-            }
-            std::cout << "\n";
+        for (std::map<std::string, std::string>::const_iterator it = l.cgi.begin(); it != l.cgi.end(); ++it) {
+            std::cout << "      - CGI: " << it->first << " -> " << it->second << "\n";
         }
+        if (!l.upload_path.empty()) {
+            std::cout << "      - Upload Path: " << l.upload_path << "\n";
+        }
+        if (!l.cgi_params.empty()) {
+            std::cout << "\n      - CGI Parameters: ";
+            for (std::map<std::string, std::string>::const_iterator it = l.cgi_params.begin(); it != l.cgi_params.end(); ++it) {
+                std::cout << it->first << "=" << it->second << " ";
+            }
+        }
+        std::cout << "\n";
     }
 }
-
 
 unsigned long Parser::custom_inet_addr(const std::string& ip_str) {
     std::stringstream ss(ip_str);
@@ -342,4 +403,42 @@ unsigned long Parser::custom_inet_addr(const std::string& ip_str) {
 
     unsigned long result = (parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | (parts[3]);
     return result;
+}
+std::string Parser::ipToString(unsigned long ip) {
+    std::stringstream ss;
+    ss << ((ip >> 24) & 0xFF) << "."
+       << ((ip >> 16) & 0xFF) << "."
+       << ((ip >> 8) & 0xFF) << "."
+       << (ip & 0xFF);
+    return ss.str();
+}
+
+
+void Parser::validateListenDirectives(const std::vector<std::pair<unsigned long, unsigned short> >& listen_sockets) {
+    std::vector<unsigned short> wildcard_ports;
+
+    for (size_t i = 0; i < listen_sockets.size(); ++i) {
+        if (listen_sockets[i].first == 0) {
+            wildcard_ports.push_back(listen_sockets[i].second);
+        }
+    }
+
+    if (wildcard_ports.empty()) {
+        return; 
+    }
+
+    for (size_t i = 0; i < listen_sockets.size(); ++i) {
+        if (listen_sockets[i].first != 0) {
+            for (size_t j = 0; j < wildcard_ports.size(); ++j) {
+                if (listen_sockets[i].second == wildcard_ports[j]) {
+                    std::stringstream error_msg;
+                    error_msg << "Configuration error: a specific IP ("
+                              << ipToString(listen_sockets[i].first)
+                              << ") cannot be bound to port " << listen_sockets[i].second
+                              << " because that port is already bound to a wildcard address (0.0.0.0).";
+                    throw std::runtime_error(error_msg.str());
+                }
+            }
+        }
+    }
 }

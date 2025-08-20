@@ -1,7 +1,7 @@
 #include "../inc/Request.hpp"
 
 Request::Request(std::string& reqMsg):_boday(""),_isvalid(false), _contentLength(-1){
-    std::cout << reqMsg << std::endl;
+    // std::cout << reqMsg << std::endl;
     std::istringstream ss(reqMsg);
     std::string reqLine;
     std::getline(ss, reqLine);
@@ -12,6 +12,10 @@ Request::Request(std::string& reqMsg):_boday(""),_isvalid(false), _contentLength
 }
 Request::~Request(){}
 
+///
+bool Request::isValidHeaders() const { return this->_isvalid;}
+
+/// 
 void Request::_parseRequestLine(std::string& RqLine){
     std::stringstream ss(RqLine);
     size_t queryPos;
@@ -25,16 +29,9 @@ void Request::_parseRequestLine(std::string& RqLine){
         _Query = _uriPath.substr(queryPos + 1);
         _uriPath = _uriPath.substr(0, queryPos);
     }
-    for(int i = 0; i < 4 ; i++){
-        // if (i == 3)
-        //     _isvalid = true;
-        if (Methods[i] == _method)
-            break;
-    }
     if (_httpV != "HTTP/1.0" && _httpV != "HTTP/1.1")
         _isvalid = true;
 }
-
 void Request::_parseHeaderFields(std::istringstream& RqHeaders){
 	std::string buffer;
 	std::getline(RqHeaders, buffer);
@@ -57,16 +54,11 @@ void Request::_parseHeaderFields(std::istringstream& RqHeaders){
 	}
 }
 
-bool Request::isValidHeaders() const { return this->_isvalid;}
+///
 
-std::string Request::getHeadr(std::string& key){
-    std::map<std::string, std::string>::iterator  it = _headers.find(key);
-    return (it != _headers.end()) ? it->second : "";
-}
+std::string Request::getDirContent(){
 
-std::string Request::getListContent() const{
-
-    DIR* dir =  opendir(this->_uriPath.c_str());
+    DIR* dir =  opendir(this->_path.c_str());
     if (!dir)
         return ("");
     struct dirent* entry;
@@ -79,11 +71,54 @@ std::string Request::getListContent() const{
             name += "/";
         content << "<li><a href=\"";
         content << _uriPath;
-        if (_uriPath.length() == 0 || _uriPath[_uriPath.length() - 1] != '/')
+        if (_path.length() == 0 || _uriPath[_uriPath.length() - 1] != '/')
             content << "/";
         content << name << "\">" << name << "</a></li>\n";
     }
     closedir(dir);
     content << "</ul>";
     return content.str();
+}
+void Request::setHeadr(std::string key, std::string value){
+    this->_headers[key] = value;
+}
+bool Request::findBestLocation(const std::string& requestPath, const ServerConfig& serverConfig) {
+    size_t longestMatchLength = 0;
+
+    for (size_t i = 0; i < serverConfig.locations.size(); ++i) {
+        const LocationConfig& loc = serverConfig.locations[i];
+
+        if (requestPath.rfind(loc.path, 0) == 0) {
+            if (loc.path.length() > longestMatchLength) {
+                longestMatchLength = loc.path.length();
+                loc_config = loc;
+            }
+        }
+    }
+    if (longestMatchLength > 0) {
+        return true;
+    } else {
+        loc_config = LocationConfig();
+        return false;
+    }
+    
+}
+//check Path Traversal Attack;
+void Request::getFullPath(const std::string &urlPath, LocationConfig &locationConfig)
+{
+    std::string cleanRoot = locationConfig.root;
+    if (cleanRoot.size() > 1 && cleanRoot[cleanRoot.size() - 1] == '/')
+        cleanRoot.erase(cleanRoot.size() - 1);
+
+    std::string relative = urlPath;
+
+    if (!locationConfig.path.empty() && urlPath.find(locationConfig.path) == 0) {
+        relative = urlPath.substr(locationConfig.path.size());
+        if (!relative.empty() && relative[0] == '/')
+            relative.erase(0, 1);
+    }
+
+    this->_path = cleanRoot;
+    if (!relative.empty())
+        this->_path += "/" + relative;
 }

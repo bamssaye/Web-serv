@@ -5,8 +5,8 @@ CXXFLAGS = -Wall -Wextra -Werror -std=c++98  -fsanitize=address
 RM = rm -rf
 #################
 VPATH = inc:src
-SRC = main.cpp server.cpp Parser.cpp Request.cpp client.cpp 
-SRC += Response.cpp #AutoIndex.cpp StatusCode.cpp  Library.cpp main.cpp
+SRC = main.cpp Parser.cpp Request.cpp server.cpp client.cpp Response.cpp
+#SRC +=  CgiHandler.cpp  CgiHandler.cpp#AutoIndex.cpp StatusCode.cpp  Library.cpp main.cpp
 
 OBJS =  $(addprefix $(OBJDIR)/,  $(notdir $(SRC:.cpp=.o)))
 

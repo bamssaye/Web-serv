@@ -53,32 +53,34 @@ enum Methods
 };
 
 struct LocationConfig {
+    public:
     std::string              path;
     std::string              root;
     std::string              index;
-    std::string              cgi_pass;
     bool                     autoindex;
-    std::vector<Methods>     allowed_methods;
+    std::vector<std::string> allowed_methods;
     int                      return_code;
     std::string              return_url;
     std::string              upload_path;
-    std::vector<std::string> cgi_extensions;
+    std::map<std::string, std::string> cgi;
+    std::map<std::string, std::string> cgi_params;
 
     LocationConfig();
+    LocationConfig(const LocationConfig& other);
+    LocationConfig& operator=(const LocationConfig& other);
 };
 
 struct ServerConfig {
-    unsigned long                host;
-    int                          port;
-    std::string                  root;
-    std::vector<std::string>     server_names;
+    public:
+    std::vector<std::pair<unsigned long, unsigned short> >  listen;
+    std::vector<std::string>                  host_str;
     long                         client_max_body_size;
     std::map<int, std::string>   error_pages;
-    // std::pair<std::vector<int>, std::string> error_pages;
     std::vector<LocationConfig>  locations;
-    std::map<unsigned long, int> listen; // to check
 
     ServerConfig();
+    ServerConfig(const ServerConfig& other);
+    ServerConfig& operator=(const ServerConfig& other);
 };
 
 // template <typename T>

@@ -1,10 +1,11 @@
 #pragma once
+/////////////////////
 #include "webserv.h"
 #include "Parser.hpp"
 #include "client.hpp"
-// class Client;
-class InfoSocket{
+//////////////////////
 
+class InfoSocket{
 protected:
 	int				_fd;
 	sockaddr_in		addr;
@@ -12,35 +13,23 @@ protected:
 	epoll_event		sock_event;
 	uint16_t		port;
 	uint32_t		ip;
-	
-
 public:
 	InfoSocket();
 	~InfoSocket();
 	//
-	void setSocket(int fd, uint16_t port, uint32_t ip, int family);
-	//
-	int getFd() const;
-	
-	//
-	int setFd(int fd);
-	sockaddr_in& getSockaddr(){
-		return addr;
-	}
-	socklen_t& getsocklen(){
-		return addr_len;
-	}
-	epoll_event& getSockEvent() {
-		return sock_event;
-	}
-	
-	// InfoSocket();
-	
+	void			setSocket(int fd, uint16_t port, uint32_t ip, int family);
+	int 			setFd(int fd);
+	int 			getFd() const;
+	sockaddr_in&	getSockaddr();
+	socklen_t&		getsocklen();
+	epoll_event&	getSockEvent();
 };
+
 ///////
 class Server : public InfoSocket {//}, public StatusCode {
 
 	std::map <int, Client*>		_Clients;
+	int							_cliCount;
 	epoll_event					_events[MAX_EVENTS];
 	int 						_epollFd;
 	int							_oP;
@@ -55,16 +44,17 @@ class Server : public InfoSocket {//}, public StatusCode {
 	void						_AcceptCon(int FdServer);
 	void						_ClientRead(int cliFd);
 	void						_ClientWrite(int cliFd);
+	void 						_writeEvent(int epollFd, int fd);
+	void 						_readEvent(int epollFd, int fd);
 public:
 	Server (ServerConfig& servers);
 	~Server();
-	void initServer();
-	void runServer();
-	
-	//
-	template <typename T> std::string _toString(T value);
-	std::vector<int> getListFd;
+	///
 
-		
+	template <typename T>
+	std::string					_toString(T value);
+	void 						initServer();
+	void 						runServer();
+	std::vector<int> 			getListFd;		
 };
 

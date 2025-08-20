@@ -8,12 +8,10 @@ public:
     ~Parser();
 
     void parse();
-    std::vector<ServerConfig>& getServers();
     void displayConfigs();
 
-private:
     std::string               _filename;
-    std::vector<ServerConfig> _servers;
+    ServerConfig              _server;
 
     std::string readFile();
     std::vector<std::string> tokenize(const std::string& content);
@@ -23,10 +21,11 @@ private:
     bool isNumber(const std::string& s);
     void validatePort(const std::string& portStr);
     void validateHost(const std::string& host);
-    void validateRoot(const std::string& path);
-    void validateMethods(const std::vector<Methods>& methods);
+    void validateRoot(std::string& path);
+    void validateMethods(const std::vector<std::string>& methods);
     void validateReturnCode(int code);
     void validateErrorPageCode(int code);
     void validateAutoindex(const std::string& val);
+    void validateListenDirectives(const std::vector<std::pair<unsigned long, unsigned short> >& listen_sockets);
+    std::string ipToString(unsigned long ip);
 };
-

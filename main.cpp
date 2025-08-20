@@ -9,9 +9,7 @@ int main(int argc, char **argv) {
         Parser Parser(argv[1]);
         Parser.parse();
 		Parser.displayConfigs();
-        std::vector<ServerConfig> server = Parser.getServers();
-        ServerConfig ser = server[0];
-        Server serve(ser);
+        Server serve(Parser._server);
     }catch(std::exception& e){
         std::cerr << e.what() << std::endl;
     }
