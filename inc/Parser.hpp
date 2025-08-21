@@ -3,6 +3,7 @@
 #include "webserv.h"
 
 class Parser {
+    ServerConfig              _server;
 public:
     Parser(const std::string& filename);
     ~Parser();
@@ -11,7 +12,6 @@ public:
     void displayConfigs();
 
     std::string               _filename;
-    ServerConfig              _server;
 
     std::string readFile();
     std::vector<std::string> tokenize(const std::string& content);
@@ -28,4 +28,5 @@ public:
     void validateAutoindex(const std::string& val);
     void validateListenDirectives(const std::vector<std::pair<unsigned long, unsigned short> >& listen_sockets);
     std::string ipToString(unsigned long ip);
+    ServerConfig& getServerConfig() { return _server; }
 };

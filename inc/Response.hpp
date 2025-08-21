@@ -11,7 +11,7 @@ public:
 
     //
     std::string getCodeMessage(int code);
-    std::string ErrorResponse(int code);
+    std::string ErrorResponse(int code, std::map<int, std::string> error_pages = std::map<int, std::string>());
     std::string getResponse();
 };
 

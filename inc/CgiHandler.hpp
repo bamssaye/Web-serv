@@ -9,14 +9,14 @@
 
 class CgiHandler {
 public:
-    CgiHandler(Request& request);
+    CgiHandler(Request& request, sockaddr_in& clientAddr);
     ~CgiHandler();
 
     std::string executeCgi(Request& request);
-
     std::map<std::string, std::string> _env;
 
-    void _initEnv(Request& request);
+
+    void _initEnv(Request& request, sockaddr_in& clientAddr);
     char **_getEnvAsCstrArray() const;
     
 };

@@ -40,13 +40,12 @@ void Client::setRequest(int epollFd){
     
     if(!rq.isValidHeaders()){}
     if (!rq.findBestLocation(rq.getUri(), this->_server)) {
-        this->_respoBuf = res.ErrorResponse(403);
+        this->_respoBuf = res.ErrorResponse(404, this->_server.error_pages);
         epoll_event event;
         event.events = EPOLLOUT | EPOLLET;
         event.data.fd = this->_fd;
         epoll_ctl(epollFd, EPOLL_CTL_MOD, this->_fd, &event);
         return;
-        // return; // checki wax atzid xi haja qebk mat returni hit benti lia katbdel f epoll
     }
     if (rq.loc_config.return_code != 0) {
         this->_respoBuf = rq.createRedirectResponse(rq.loc_config.return_url, rq.loc_config.return_code);
@@ -58,12 +57,20 @@ void Client::setRequest(int epollFd){
     }
     rq.getFullPath(rq.getUri(), rq.loc_config);
     if (check_cgi_executable(rq)) {
-            CgiHandler cgi(rq);
+            CgiHandler cgi(rq, this->_cliAdd);
             std::string output = cgi.executeCgi(rq);
+            std::cout << "CGI Output: " << output << std::endl;
             if (output.empty() || output == "Status: 500\r\n\r\n")
-                this->_respoBuf = res.ErrorResponse(500);
+                this->_respoBuf = res.ErrorResponse(500, this->_server.error_pages);
             this->_respoBuf = parseCgiOutput(output, rq);
-            // return;
+            if (this->_respoBuf.empty())
+                this->_respoBuf = res.ErrorResponse(500, this->_server.error_pages);
+
+            epoll_event event;
+            event.events = EPOLLOUT | EPOLLET;
+            event.data.fd = this->_fd;
+            epoll_ctl(epollFd, EPOLL_CTL_MOD, this->_fd, &event);
+            return;
         }
     
     std::string method = rq.getMethod();//re.getMethod();
@@ -75,7 +82,11 @@ void Client::setRequest(int epollFd){
         // this->setResponse();
     }
     else if (method == "DELETE") {
-        DeleteMethod(rq._path, res); 
+        DeleteMethod(rq.getPath(), res);
+    }
+    else
+    {
+        this->_respoBuf = res.ErrorResponse(501, this->_server.error_pages);
     }
     // else {
     //     // response.setStatusCode(405);
@@ -103,11 +114,11 @@ std::string _tString(T value)
 }
 void Client::GetRequest(Request& req, Response& res){
     // struct stat st;
-    this->_respoBuf = res.ErrorResponse(200);
+    this->_respoBuf = res.ErrorResponse(200, this->_server.error_pages);
     // std::string Uri = req.getUri();
     // std::cerr << "READ file  : " << req.getUri().c_str()  << std::endl;
     // if (stat(req.getUri().c_str() , &st) < 0){
-    //     this->_respoBuf = res.ErrorResponse(404);}
+    //     this->_respoBuf = res.ErrorResponse(404, this->_server.error_pages););}
     (void)req;
     (void)res;
     (void)_buffer;
@@ -155,18 +166,18 @@ void Client::GetRequest(Request& req, Response& res){
 void Client::DeleteMethod(const std::string& fpath, Response& res) {
     struct stat st;
     if (stat(fpath.c_str(), &st) < 0) {
-        this->_respoBuf = res.ErrorResponse(404);
+        this->_respoBuf = res.ErrorResponse(404, this->_server.error_pages);
     }
     if (access(fpath.c_str(), W_OK) != 0) {
-        this->_respoBuf = res.ErrorResponse(403);
+        this->_respoBuf = res.ErrorResponse(403, this->_server.error_pages);
     }
     if (!S_ISREG(st.st_mode)) {
-        this->_respoBuf = res.ErrorResponse(405);
+        this->_respoBuf = res.ErrorResponse(405, this->_server.error_pages);
     }
 
     if (remove(fpath.c_str()) != 0) {
-        this->_respoBuf = res.ErrorResponse(500);
+        this->_respoBuf = res.ErrorResponse(500, this->_server.error_pages);
     }
     std::cout << res.getCodeMessage(204) << std::endl;
-    this->_respoBuf = res.ErrorResponse(204);
+    this->_respoBuf = res.ErrorResponse(204, this->_server.error_pages);
 }
