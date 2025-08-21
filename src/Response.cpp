@@ -82,6 +82,7 @@ std::string Response::_MimeTypes(const std::string &Url){
         return m[exc];
     return "application/octet-stream";
 }
+
 long long Response::fileSize(std::string filePath){
     std::ifstream _file;
     _file.open(filePath.c_str(), std::ios::binary);
@@ -144,4 +145,28 @@ std::string Response::getResponse(std::string path){
     headers += content.str();
 
     return headers;
+}
+
+std::string Response::_extratexcFilename(std::string filename){
+    std::string::size_type dot = filename.find_last_of('.');
+    if (dot == std::string::npos)
+        return "";
+    std::string exc = filename.substr(dot);
+    return exc;
+}
+std::string Response::_extratFilename(std::string filename){
+    std::string::size_type dot = filename.find_last_of('.');
+    if (dot == std::string::npos)
+        return filename;
+    std::string exc = filename.substr(0, dot);
+    return exc;
+}
+std::string Response::getUploadFilename(std::string& UriPath, std::string filename, std::string rd){
+    std::string file;
+    
+    file = UriPath + "/";
+    file += _extratFilename(filename);
+    file += _toString(rd);
+    file += _extratexcFilename(filename);
+    return file;
 }

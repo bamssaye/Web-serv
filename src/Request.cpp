@@ -1,7 +1,7 @@
 #include "../inc/Request.hpp"
 
 Request::Request(std::string& reqMsg):_boday(""),_isvalid(false), _contentLength(-1){
-    // std::cout << reqMsg << std::endl;
+    std::cout << reqMsg << std::endl;
     std::istringstream ss(reqMsg);
     std::string reqLine;
     std::getline(ss, reqLine);
@@ -9,9 +9,51 @@ Request::Request(std::string& reqMsg):_boday(""),_isvalid(false), _contentLength
     this->_parseHeaderFields(ss);
     size_t pos_end = reqMsg.find("\r\n\r\n");
 	_boday = reqMsg.substr(pos_end + 4);
+    // std::cout << _boday << std::endl;
 }
 Request::~Request(){}
+bool isHexChar(char c){
+    return (std::isxdigit(static_cast<unsigned char>(c)));
+}
 
+std::string DecodeUrl(const std::string& str) {
+    std::ostringstream rzlt;
+    for (size_t i = 0; i < str.length(); ++i) {
+        char c = str[i];
+        if (c == '%') {
+            if (i + 2 >= str.length())
+                return std::string("");
+            char c1 = str[i + 1];
+            char c2 = str[i + 2];
+            if (!isHexChar(c1) || !isHexChar(c2))
+                return std::string("");
+            rzlt << static_cast<char>(std::strtol(str.substr(i + 1, 2).c_str(), NULL, 16));
+            i += 2;
+        } else if (c == '+') {
+            rzlt << ' ';
+        } else {
+            rzlt << c;
+        }
+    }
+    return rzlt.str();
+}
+std::map<std::string, std::string> Request::_FormUrlDec(const std::string& body) {
+    std::map<std::string, std::string> full;
+    std::istringstream _body(body);
+    std::string l;
+
+    while (std::getline(_body, l, '&')) {
+        size_t pos = l.find('=');
+        if (pos == std::string::npos){
+            full.clear();
+            return (full);
+        }
+        std::string key = DecodeUrl(l.substr(0, pos));
+        std::string value = DecodeUrl(l.substr(pos + 1));
+        full[key] = value;
+    }
+    return full;
+}
 ///
 bool Request::isValidHeaders() const { return this->_isvalid;}
 std::map<std::string, std::string>  Request::getHeaders(){return this->_headers;}
@@ -53,12 +95,12 @@ void Request::_parseHeaderFields(std::istringstream& RqHeaders){
 
 	while (std::getline(RqHeaders, buffer))
 	{
-		if (buffer == "\r")
+        if (buffer == "\r")
 			break;
 		size_t pos = buffer.find(':', 0);
 		if (pos != std::string::npos){
-            if ("Content-Lenght" == buffer.substr(0, pos - 1)){
-                _contentLength = std::atoi(buffer.substr(0, pos + 2).c_str());
+            if (buffer.substr(0, pos) == "Content-Length"){
+                _contentLength = std::atoi(buffer.substr(pos + 2).c_str());
             }
             std::string value = buffer.substr(pos + 2);
 			_headers[buffer.substr(0, pos)] = value.erase(value.find_last_not_of("\t"));        
@@ -68,7 +110,7 @@ void Request::_parseHeaderFields(std::istringstream& RqHeaders){
             break;
         }
 	}
-    std::cerr << "dsadsa" << _headers["Content-Lenght"] << std::endl;
+    
 }
 
 ///
@@ -117,8 +159,7 @@ bool Request::findBestLocation(const std::string& requestPath, const ServerConfi
     } else {
         loc_config = LocationConfig();
         return false;
-    }
-    
+    } 
 }
 
 void Request::getFullPath(const std::string &urlPath, LocationConfig &locationConfig)

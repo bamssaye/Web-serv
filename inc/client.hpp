@@ -13,6 +13,8 @@ class Client{
     time_t          _lastActive;
     std::ifstream   _file;
     bool            _sendingFile;
+    ///
+    size_t       _contentLength;
     // sockaddr_in     _cliAdd;
     //
 
@@ -23,6 +25,9 @@ public:
 
     //
     bool            requCheck;
+    bool            requCheckcomp;
+
+
     ServerConfig    server;
     bool            dataPending();
     const char*     getdataPending();
@@ -39,7 +44,6 @@ public:
     // void            setResponse();
     void readnextChunk();
     void readlargeFile(std::string file, Response& res);
-
     //
     void GetMethod(Request& req, Response& res);
     void PostMethod(Request& req, Response& res);

@@ -33,6 +33,7 @@ public:
     void                                setHeadr(std::string key, std::string value);
     bool                                isValidHeaders() const;
     LocationConfig                      loc_config;
+
     //
     
     //
@@ -41,5 +42,6 @@ public:
     std::vector<FormPart>               MultipartBody(const std::string& body, const std::string& conType);
     FormPart                            BoundryBody(const std::string& part);
     std::string                         ExtractBoundry(const std::string& str);
+     std::map<std::string, std::string> _FormUrlDec(const std::string& body);
 };
 

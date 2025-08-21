@@ -35,7 +35,7 @@
 #include <ctime>
 
 #define MAX_EVENTS 1024
-#define BUFFER_SIZE 4096
+#define BUFFER_SIZE 8192
 
 
 struct FormPart {
@@ -83,11 +83,11 @@ struct ServerConfig {
     ServerConfig& operator=(const ServerConfig& other);
 };
 
-// template <typename T>
-// std::string _toString(T value)
-// {
-//     std::ostringstream oss;
-//     oss << value;
-//     return oss.str();
-// }
+template <typename T>
+std::string _toString(T value)
+{
+    std::ostringstream oss;
+    oss << value;
+    return oss.str();
+}
 #endif

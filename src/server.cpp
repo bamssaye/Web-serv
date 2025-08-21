@@ -28,11 +28,6 @@ InfoSocket::~InfoSocket(){}
 
 /// MSG
 void Server::_Msg(std::string m){ std::cout << m << std::endl;}
-template <typename T> std::string Server::_toString(T value){
-    std::ostringstream oss;
-    oss << value;
-    return oss.str();
-}
 void Server::_MsgErr(std::string m){ std::cerr << m << std::endl;}
 
 /// INIT SERVER
@@ -104,14 +99,14 @@ void Server::_handleEvent(const epoll_event& ev){
 /// READ && WRITE ) EVENTS
 void Server::_writeEvent(int epollFd, int fd){
     epoll_event event;
-    event.events = EPOLLOUT | EPOLLET;
+    event.events = EPOLLOUT ;//;| EPOLLET;
     event.data.fd = fd;
     epoll_ctl(epollFd, EPOLL_CTL_MOD, fd, &event);
 }
 
 void Server::_readEvent(int epollFd, int fd){
     epoll_event event;
-    event.events = EPOLLIN | EPOLLET;
+    event.events = EPOLLIN ;//| EPOLLET;
     event.data.fd = fd;
     epoll_ctl(epollFd, EPOLL_CTL_MOD, fd, &event);
 }
@@ -119,18 +114,17 @@ void Server::_readEvent(int epollFd, int fd){
 void Server::_ClientRead(int cliFd){
     char buffer[BUFFER_SIZE];
     ssize_t bytes;
+
    
     if (_Clients.find(cliFd) == _Clients.end())
         return;
-    bytes = recv(cliFd, buffer, BUFFER_SIZE - 1, 0);
-    if (bytes > 0){
-        _Clients[cliFd]->addBuffer(buffer, bytes);
-        if (_Clients[cliFd]->requCheck){
+    bytes = recv(cliFd, buffer, BUFFER_SIZE, 0);
+    _Clients[cliFd]->addBuffer(buffer, bytes);
+    if (_Clients[cliFd]->requCheck && _Clients[cliFd]->requCheckcomp){
             _Clients[cliFd]->HttpRequest();
             _writeEvent(this->_epollFd, cliFd);
-        } 
-    }
-    else if (bytes == 0){
+    } 
+    if (bytes == 0){
         this->_closeCon(cliFd);   
     }
 }
@@ -149,12 +143,9 @@ void Server::_ClientWrite(int cliFd){
             client->readnextChunk();
         }
     }
+    
     if (!client->getdataPending() && !client->getsendingFile()){
         _readEvent(_epollFd, cliFd);
-            // epoll_event event;
-            // event.events = EPOLLIN | EPOLLET;
-            // event.data.fd = cliFd;
-            // epoll_ctl(this->_epollFd, EPOLL_CTL_MOD, cliFd, &event);
     }
 }
 
@@ -199,7 +190,7 @@ void Server::_closeCon(int FdClient){
            _Clients.erase(it);
         }
         close(FdClient);
-        this->_Msg("Connection closed: Client id = " + this->_toString(FdClient));
+        this->_Msg("Connection closed: Client id = " + _toString(FdClient));
 }
 
 /// CHECK NEW CLIENT

@@ -51,8 +51,8 @@ public:
 	~Server();
 	///
 
-	template <typename T>
-	std::string					_toString(T value);
+	// template <typename T>
+	// std::string					_toString(T value);
 	void 						initServer();
 	void 						runServer();
 	std::vector<int> 			getListFd;		
