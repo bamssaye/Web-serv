@@ -5,7 +5,7 @@ class Request;
 class Response;
 
 class Client{
-    int             _fd;
+    // int             _fd;
     int             _cliId;
     std::string     _requBuf;
     std::string     _respoBuf;
@@ -13,12 +13,12 @@ class Client{
     time_t          _lastActive;
     std::ifstream   _file;
     bool            _sendingFile;
-    sockaddr_in     _cliAdd;
+    // sockaddr_in     _cliAdd;
     //
 
 public:
     Client();
-    Client(int cliFd, sockaddr_in& cliAdd, ServerConfig& se, int cli_id);
+    Client(ServerConfig& se, int cli_id);
     ~Client();
 
     //
@@ -43,7 +43,7 @@ public:
     //
     void GetMethod(Request& req, Response& res);
     void PostMethod(Request& req, Response& res);
-    void DeleteMethod(Request& req, Response& res);
+    // void DeleteMethod(Request& req, Response& res);
 
 
 };

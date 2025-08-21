@@ -2,8 +2,8 @@
 #include "../inc/Request.hpp"
 #include "../inc/Response.hpp"
 ///
-Client::Client():_fd(-1), _bySent(0),_lastActive(0), requCheck(false){}
-Client::Client(int cliFd, sockaddr_in& cliAdd, ServerConfig& se, int cli_id):_fd(cliFd) , _cliId(cli_id), _bySent(0) ,_cliAdd(cliAdd), requCheck(false){
+Client::Client():_bySent(0),_lastActive(0), _sendingFile(false), requCheck(false){}
+Client::Client(ServerConfig& se, int cli_id):_cliId(cli_id), _bySent(0) , _sendingFile(false), requCheck(false){
     this->_lastActive = time(NULL);
     this->server = se;
 }
@@ -58,28 +58,25 @@ void Client::HttpRequest(){
     Request rq(_requBuf);
     Response res;
     if(!rq.isValidHeaders()){}
-    if (!rq.findBestLocation(rq.getUri(), this->server)) {
+    if (!rq.findBestLocation(rq.getUri(), this->server)){
         this->_respoBuf = res.ErrorResponse(403);
         return;
     }
     if (rq.loc_config.return_code != 0) {
-        this->_respoBuf = res.getRedirectResponse(rq.loc_config.return_url, rq.loc_config.return_code);
+            this->_respoBuf = res.getRedirectResponse(rq.loc_config.return_url, rq.loc_config.return_code);
         return;
     }
     rq.getFullPath(rq.getUri(), rq.loc_config);
-
     std::string method = rq.getMethod();
     if (method == "GET") {
         GetMethod(rq, res);
     }
-    // else {
-    //     // response.setStatusCode(405);
-    //     // response.setBody("Method Not Allowed");
-    // }
-    // epoll_event event;
-    // event.events = EPOLLIN | EPOLLOUT | EPOLLET;
-    // event.data.fd = this->_fd;
-    // epoll_ctl(epollFd, EPOLL_CTL_MOD, this->_fd, &event);
+    else if (method == "POST") {
+        PostMethod(rq, res);
+    }
+    else {
+        this->_respoBuf = res.ErrorResponse(501);
+    }
 }
 
 /// METHODS : GET POST DELETE
@@ -99,7 +96,6 @@ void Client::readlargeFile(std::string file, Response& res){
 void Client::GetMethod(Request& req, Response& res){
     struct stat st;
 
-    std::cout << "dsds : " << ": " << req.getUri() << ": " << req.getPath() << std::endl;
     if (stat(req.getPath().c_str(), &st) < 0){
         this->_respoBuf =  res.ErrorResponse(404); return;
     }
@@ -137,9 +133,47 @@ void Client::GetMethod(Request& req, Response& res){
 }
 
 void Client::PostMethod(Request& req, Response& res){
+    // (void)req;
+    (void)res;
 
+    // this->_respoBuf = res.ErrorResponse(501);
+    std::string conType = req.getHeadr("Content-Type");
+    long long conlen = req.getcontentLen();
+    std::cerr << req.getHeadr("Content-Lenght") << std::endl;
+    if (req.getHeadr("Content-Lenght").empty() || conlen > server.client_max_body_size || conlen < 0 ) {
+       
+        this->_respoBuf = res.ErrorResponse(400);
+        return;
+    }
+
+    // if (conType.find("multipart/form-data") != std::string::npos){
+    //     std::vector<FormPart> content = req.MultipartBody(req.getBody(), conType);
+    //     std::map<std::string, std::string> form;
+    //     for (std::vector<FormPart>::const_iterator it = content.begin(); it != content.end(); ++it) {
+    //         const FormPart& part = *it;
+    //         if (!part.filename.empty()) {
+    //             std::string uploadPath = req.loc_config.upload_path + "/file" +  ; // + part.filename; // toooo check config file
+
+    //             std::ofstream out(uploadPath.c_str(), std::ios::binary);
+    //             if (!out.is_open()) return ErrorResponse(500);
+    //             out.write(part.content.c_str(), part.content.size());
+    //             out.close();
+    //         } else {
+    //             form[part.name] = part.content;
+    //         }
+    //     }
+    //     return ErrorResponse(200);
+    // }
+    // else if (conType.find("application/x-www-form-urlencoded") != std::string::npos){
+    //     std::map<std::string, std::string> content = this->_FormUrlDec(req.body); // to check for parssiing 
+        
+    // }
+    // return ErrorResponse(415);
 }
-
-void Client::DeleteMethod(Request& req, Response& res){
+// std::string Response::PostMethod(const Request_t& req, const std::string& path){
     
-}
+// }
+
+// void Client::DeleteMethod(Request& req, Response& res){
+    
+// }

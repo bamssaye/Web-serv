@@ -186,7 +186,7 @@ void Server::_AcceptCon(int FdServer){
 			continue;
 		}
         _cliCount++;
-		_Clients[cliFd] = new Client(cliFd, cliAdd, _server ,_cliCount);
+		_Clients[cliFd] = new Client(_server ,_cliCount);
 	}
 }
 
