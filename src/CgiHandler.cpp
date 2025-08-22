@@ -30,16 +30,9 @@ void CgiHandler::_initEnv(Request& request) {
     _env["PATH_INFO"] = request.getPath();
     _env["PATH_TRANSLATED"] = request.getPath();
     _env["QUERY_STRING"] = request.getQuery();
-    // _env["REMOTE_ADDR"] = request.server.host_str[client.port_index];
     _env["REMOTE_IDENT"] = headers.count("Authorization") ? headers.at("Authorization") : "";
     _env["REMOTE_USER"] = headers.count("Authorization") ? headers.at("Authorization") : "";
     _env["REQUEST_URI"] = request.getPath() + "?" + request.getQuery();
-    // if (headers.count("Hostname")) {
-    //     _env["HTTP_HOST"] = headers.at("Hostname");
-    // } else {
-    //     _env["HTTP_HOST"] = request.server.host_str[client.port_index];
-    // }
-    // _env["SERVER_PORT"] = to_string(request.server.listen[0].second);
     _env["SERVER_PROTOCOL"] = "HTTP/1.0";
     _env["SERVER_SOFTWARE"] = "Weebserv/1.0";
 
@@ -72,7 +65,6 @@ char **CgiHandler::_getEnvAsCstrArray() const {
 }
 
 std::string CgiHandler::executeCgi(Request& request) {
-    // check_cgi_executable(config.script_path, config.cgi_extensions);
     pid_t pid;
     int saveStdin = dup(STDIN_FILENO);
     int saveStdout = dup(STDOUT_FILENO);
@@ -95,24 +87,25 @@ std::string CgiHandler::executeCgi(Request& request) {
     lseek(fdIn, 0, SEEK_SET);
 
     pid = fork();
-    // client.request.start_cgi = clock();
-    // client.request.pid = pid;
-
     if (pid == -1) {
         std::cerr << "Fork failed." << std::endl;
         return "Status: 500\r\n\r\n";
     } else if (pid == 0) {
         dup2(fdIn, STDIN_FILENO);
         dup2(fdOut, STDOUT_FILENO);
-        // sleep(12); 
-
+        std::string cgi_path = request.getCgipass();
+        if (cgi_path.empty()) {
+            std::cerr << "CGI path       is empty." << std::endl;
+            write(STDOUT_FILENO, "Status: 500\r\n\r\n", 16);
+            exit(1);
+        }
         char * const argv[] = {
-            const_cast<char*>(request.getCgipass().c_str()),
+            const_cast<char*>(cgi_path.c_str()),
             const_cast<char*>(_env["SCRIPT_NAME"].c_str()),
             NULL 
         };
 
-        execve(request.getCgipass().c_str(), argv, env);
+        execve(cgi_path.c_str(), argv, env);
         std::cerr << "Execve failed." << std::endl;
         write(STDOUT_FILENO, "Status: 500\r\n\r\n", 16);
         exit(1);
@@ -126,13 +119,6 @@ std::string CgiHandler::executeCgi(Request& request) {
             buffer[bytes] = '\0';
             output += buffer;
         }
-        
-        // if (difftime(clock(), request.start_cgi) > 10) {
-        //     std::cerr << "Error: CGI script timed out." << std::endl;
-        //     // write(STDOUT_FILENO, "Status: 504\r\n\r\n", 17);
-        //     kill(pid, SIGKILL);
-        //     return "Status: 504\r\n\r\n";
-        // }
     }
 
     dup2(saveStdin, STDIN_FILENO);
@@ -155,17 +141,12 @@ std::string CgiHandler::executeCgi(Request& request) {
         if (request.getPath().empty() || request.loc_config.cgi.empty()) {
             return false;
         }
-
-        // if (access(request._path.c_str(), X_OK) != 0) {
-        //     return false;
-        // }
-
         std::string extension = request.getPath().substr(request.getPath().find_last_of('.') + 1);
         if (request.loc_config.cgi.count(extension) == 0)
             return false;
         if (request.loc_config.cgi.at(extension).empty())
             return false;
-        request.getCgipass() = request.loc_config.cgi.at(extension);
+        request.setCgipass(request.loc_config.cgi.at(extension));
 
         return true;
     }
@@ -188,7 +169,6 @@ std::string parseCgiOutput(const std::string& rawOutput, Request& request) {
         bodyPart = rawOutput;
     }
 
-    // valid_output = bodyPart;
 
     std::stringstream ss(headersPart);
     std::string line;
@@ -214,7 +194,6 @@ std::string parseCgiOutput(const std::string& rawOutput, Request& request) {
             status = value;
 
         } else {
-            // request._headers[key] = value;
             request.setHeadr(key, value);
             if (key == "Set-Cookie") {
                 cookie  += key + ": " + value + "\r\n";
@@ -224,7 +203,7 @@ std::string parseCgiOutput(const std::string& rawOutput, Request& request) {
     }
     valid_output  = "HTTP/1.0 " + status + "\r\n";
     valid_output += "Content-type: " + request.getHeadr("Content-type") + "\r\n";
-    valid_output += cookie + "Content-Length: " + to_string(valid_output.size()) + "\r\n\r\n";
+    valid_output += cookie + "Content-Length: " + to_string(bodyPart.size()) + "\r\n\r\n";
     valid_output += bodyPart;
 
     return valid_output;

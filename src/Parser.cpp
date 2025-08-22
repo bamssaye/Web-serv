@@ -155,6 +155,12 @@ void Parser::parseServerDirective(const std::vector<std::string>& tokens, size_t
         unsigned long host_addr = 0;
         unsigned short port_num = 80;
         std::string host_str_val;
+        if (colon != std::string::npos && colon == val.length() - 1) {
+            throw std::runtime_error("Error: Invalid listen directive, port number missing.");
+        }
+        else if (colon == 0) {
+            throw std::runtime_error("Error: Invalid listen directive, host missing.");
+        }
         if (colon != std::string::npos) {
             host_str_val = val.substr(0, colon);
             if (host_str_val == "localhost")
@@ -250,6 +256,9 @@ void Parser::parseLocationDirective(const std::vector<std::string>& tokens, size
         validateMethods(methods);
         locConf.allowed_methods = methods;
     } else if (key == "return") {
+        if (locConf.return_code != 0) {
+            throw std::runtime_error("Error: 'return' directive must be unique within a location block.");
+        }
         std::string codeStr = tokens[i++];
         if (!isNumber(codeStr)) throw std::runtime_error("Error: invalid redirect code.");
         int code = std::atoi(codeStr.c_str());

@@ -44,7 +44,8 @@ public:
     //
     void GetMethod(Request& req, Response& res);
     void PostMethod(Request& req, Response& res);
-    // void DeleteMethod(Request& req, Response& res);
+    void DeleteMethod(Request& req, Response& res);
+    void Cgi_call(Request& rq, Response& res);
 
 
 };

@@ -1,10 +1,8 @@
 #include "../inc/server.hpp"
 
-/// CONSTRUCTOR, DECONSTRUCTOR : SERVER && INOFOSOCKET
 
 Server::Server (ServerConfig& servers) : InfoSocket(), _cliCount(0), _oP(1), _server(servers){
     this->initServer();
-    // this->runServer();
 }
 Server::~Server(){
     for (std::map<int, Client*>::iterator it = _Clients.begin(); it != _Clients.end(); ++it)
@@ -18,11 +16,9 @@ InfoSocket::InfoSocket():_fd(-1), port(0), ip(0){
 }
 InfoSocket::~InfoSocket(){}
 
-/// MSG
 void Server::_Msg(std::string m){ std::cout << m << std::endl;}
 void Server::_MsgErr(std::string m){ std::cerr << m << std::endl;}
 
-/// INIT SERVER
 void Server::initServer(){
     if((this->_epollFd = epoll_create1(EPOLL_CLOEXEC)) == -1){
         throw std::runtime_error("epoll_create1 failed");}
@@ -51,7 +47,6 @@ void Server::initServer(){
     std::cout << "Server initialized." << std::endl;
 }
 
-/// RUN SERVER 
 void Server::runServer(){
     this->_Msg("Server listening.");
     while(true){
@@ -89,7 +84,6 @@ void Server::_handleEvent(const epoll_event& ev){
 }
 
 
-/// READ && WRITE ) EVENTS
 void Server::_writeEvent(int epollFd, int fd){
     epoll_event event;
     event.events = EPOLLOUT ;
@@ -103,7 +97,6 @@ void Server::_readEvent(int epollFd, int fd){
     epoll_ctl(epollFd, EPOLL_CTL_MOD, fd, &event);
 }
 
-/// READ && WRITE
 void Server::_ClientRead(int cliFd){
     char buffer[BUFFER_SIZE];
     ssize_t bytes;
@@ -141,7 +134,6 @@ void Server::_ClientWrite(int cliFd){
     }
 }
 
-/// ACCEPT CONECTION
 void Server::_AcceptCon(int FdServer){
 	sockaddr_in cliAdd;
 	socklen_t cliAddLen = sizeof(cliAdd);
@@ -173,7 +165,6 @@ void Server::_AcceptCon(int FdServer){
 	}
 }
 
-/// CLOSE CONECTION
 void Server::_closeCon(int FdClient){
     int id = 0;
     std::map<int, Client*>::iterator it = _Clients.find(FdClient);
@@ -202,14 +193,12 @@ void Server::checkTimeouts() {
     }
 }
 
-/// CHECK NEW CLIENT
 bool Server::_isNewClient(int FdClient){
 	if (std::find(_listfd.begin(), _listfd.end(), FdClient) != _listfd.end())
         return true;
 	return false;
 }
 
-/// NON-BLOCKING
 int Server::_setNonBlocking(int fd){
     int f = fcntl(fd, F_GETFL, 0);
     if (f == -1)
@@ -217,7 +206,6 @@ int Server::_setNonBlocking(int fd){
     return fcntl(fd, F_SETFL, f | O_NONBLOCK);
 }
 
-/// SET SOCKET
 void InfoSocket::setSocket(int fd, uint16_t port, uint32_t ip, int family){
 	
 	this->_fd = fd;
@@ -233,10 +221,8 @@ void InfoSocket::setSocket(int fd, uint16_t port, uint32_t ip, int family){
     this->sock_event.data.fd = this->_fd;
 }
 
-/// Fd : GET, SET
 int InfoSocket::getFd() const{return _fd;}
 int InfoSocket::setFd(int fd){ this->_fd = fd; return this->_fd < 0;}
 epoll_event& InfoSocket::getSockEvent(){ return sock_event;};
 socklen_t& InfoSocket::getsocklen(){ return addr_len; }
 sockaddr_in& InfoSocket::getSockaddr(){ return addr; }
-///

@@ -12,6 +12,55 @@ std::string Response::getCodeMessage(int code){
     std::map<int, std::string>::const_iterator it = _cMessage.find(code);
     return (it != _cMessage.end()) ? it->second : "Unknown Error";
 }
+std::string Response::getCodeMessageHtml(int code){
+    std::map<int, std::string>::const_iterator it = _cMessage.find(code);
+    if (it != _cMessage.end()) {
+        std::ostringstream html;
+            std::ifstream file("html/error/default.html");
+            if (file.is_open()) {
+                std::ostringstream buffer;
+                buffer << file.rdbuf();
+                std::string htmlContent = buffer.str();
+                file.close();
+
+                size_t pos;
+                if((pos = htmlContent.find("codes")) != std::string::npos)
+                    htmlContent.replace(pos, 5, _toString(code));
+                if ((pos = htmlContent.find("errors")) != std::string::npos)
+                    htmlContent.replace(pos, 6, it->second);
+                html << htmlContent;
+            } else {
+                html << "<h1>" << code << " " << it->second << "</h1>";
+            }
+            return html.str();
+    }
+    return "Unknown Error";
+}
+std::string Response::ErrorResponse(int code, std::map<int, std::string> error_pages) {
+        std::string body;
+        std::map<int, std::string>::const_iterator it = _cMessage.find(code);
+
+        std::ostringstream res;
+        if (error_pages.find(code) != error_pages.end()) {
+            std::ifstream file(error_pages.at(code).c_str());
+            if (!file.is_open()) {
+                body = this->getCodeMessageHtml(code);
+            } else {
+                std::ostringstream buffer;
+                buffer << file.rdbuf();
+                body = buffer.str();
+                file.close();
+            }
+        } else {
+            body = this->getCodeMessageHtml(code);
+        }
+        res << "HTTP/1.0 " << code << " " << it->second << "\r\n";
+        res << "Content-Type: text/html\r\n";
+        res << "Content-Length: " << body.size() << "\r\n\r\n";
+        res << body;
+        return res.str();
+}
+
 std::map<int, std::string> Response::_CodeMessage(){
     std::map<int, std::string> status;
     status[200] = "OK";
@@ -104,16 +153,16 @@ std::string Response::Connectionstatus(std::string con){
 
 ///
 
-std::string Response::ErrorResponse(int code){
-        std::ostringstream res;
-        // std::string body = this->getHtmlContent(code);
-        std::string body = this->getCodeMessage(code);
-        res << "HTTP/1.1 " << code << " " << this->getCodeMessage(code) << "\r\n";
-        res << "Content-Type: text/html\r\n";
-        res << "Content-Length: " << body.size() << "\r\n\r\n";
-        res << body;
-        return res.str();
-}
+// std::string Response::ErrorResponse(int code){
+//         std::ostringstream res;
+//         // std::string body = this->getHtmlContent(code);
+//         std::string body = this->getCodeMessage(code);
+//         res << "HTTP/1.1 " << code << " " << this->getCodeMessage(code) << "\r\n";
+//         res << "Content-Type: text/html\r\n";
+//         res << "Content-Length: " << body.size() << "\r\n\r\n";
+//         res << body;
+//         return res.str();
+// }
 std::string Response::getHeaderResponse(std::string Mimetype, int size, int code){
     std::ostringstream res;
 	res << "HTTP/1.1 " << code << " " << this->getCodeMessage(code) << "\r\n";
@@ -132,11 +181,11 @@ std::string Response::getRedirectResponse(const std::string& newUrl, int code) {
     return res.str();
 }
 
-std::string Response::getResponse(std::string path){
+std::string Response::getResponse(std::string path, std::map<int, std::string> error_pages){
     std::ifstream file(path.c_str());
 	if (!file.is_open())
-        return this->ErrorResponse(500);
-    
+        return this->ErrorResponse(500, error_pages);
+
     std::ostringstream content;
 	content << file.rdbuf();
 	file.close();

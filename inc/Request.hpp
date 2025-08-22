@@ -31,6 +31,7 @@ public:
     long long                           getcontentLen();//{return this->_contentLength;}
     //
     void                                setHeadr(std::string key, std::string value);
+    void                                setCgipass(std::string cgi);
     bool                                isValidHeaders() const;
     LocationConfig                      loc_config;
 

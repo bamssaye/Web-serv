@@ -67,6 +67,9 @@ std::string Request::getMethod(){ return this->_method;}
 std::string Request::getUri(){return this->_uriPath;}
 std::string Request::getPath(){return this->_path;}
 long long   Request::getcontentLen(){return this->_contentLength;}
+void Request::setCgipass(std::string cgi){
+    this->_cgi_pass = cgi;
+}
 /// 
 void Request::_parseRequestLine(std::string& RqLine){
     std::stringstream ss(RqLine);
