@@ -5,7 +5,6 @@ class Request;
 class Response;
 
 class Client{
-    // int             _fd;
     int             _cliId;
     std::string     _requBuf;
     std::string     _respoBuf;
@@ -13,9 +12,7 @@ class Client{
     time_t          _lastActive;
     std::ifstream   _file;
     bool            _sendingFile;
-    ///
     size_t       _contentLength;
-    // sockaddr_in     _cliAdd;
     //
 
 public:
@@ -41,7 +38,7 @@ public:
     bool            timeOut();
     //
     void            HttpRequest();
-    // void            setResponse();
+    //
     void readnextChunk();
     void readlargeFile(std::string file, Response& res);
     //

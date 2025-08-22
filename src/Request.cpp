@@ -8,9 +8,7 @@ Request::Request(std::string& reqMsg):_boday(""),_isvalid(false), _contentLength
     this->_parseRequestLine(reqLine);
     this->_parseHeaderFields(ss);
     size_t pos_end = reqMsg.find("\r\n\r\n");
-    // std::cerr << reqMsg.substr(0,pos_end) << std::endl;
 	_boday = reqMsg.substr(pos_end + 4);
-    // std::cout << _boday << std::endl;
 }
 Request::~Request(){}
 bool isHexChar(char c){
@@ -166,7 +164,7 @@ bool Request::findBestLocation(const std::string& requestPath, const ServerConfi
 
 void Request::getFullPath(const std::string &urlPath, LocationConfig &locationConfig)
 {
-    std::string cleanRoot = locationConfig.root; // home // /../../Home
+    std::string cleanRoot = locationConfig.root;
     if (cleanRoot.size() > 1 && cleanRoot[cleanRoot.size() - 1] == '/')
         cleanRoot.erase(cleanRoot.size() - 1);
 
@@ -202,7 +200,7 @@ FormPart Request::BoundryBody(const std::string& part) {
 
 	size_t headerEnd = part.find("\r\n\r\n");
 	if (headerEnd == std::string::npos)
-		throw std::runtime_error("Invalid multipart: missing header/body separator");
+		throw std::runtime_error("Error");
 
 	std::string headers = part.substr(0, headerEnd);
 	std::string body = part.substr(headerEnd + 4);
@@ -268,8 +266,13 @@ std::vector<FormPart> Request::MultipartBody(const std::string& body, const std:
     }
     std::vector<FormPart> allpart;
     for (size_t i = 0; i < all.size(); ++i) {
+        try{
         FormPart p = BoundryBody(all[i]);
         allpart.push_back(p);
+        }catch(...){
+            allpart.clear();
+            return allpart;
+        }
     }
     return allpart;
 }

@@ -3,16 +3,8 @@
 /// CONSTRUCTOR, DECONSTRUCTOR : SERVER && INOFOSOCKET
 
 Server::Server (ServerConfig& servers) : InfoSocket(), _cliCount(0), _oP(1), _server(servers){
-	try
-	{
-        this->initServer();
-        this->runServer();
-	}
-	catch(const std::exception& e)
-	{
-        std::cerr << "\033[1;31mCritical Error: " << e.what() << "\033[0m" << std::endl;
-		exit(EXIT_FAILURE);
-	}
+    this->initServer();
+    // this->runServer();
 }
 Server::~Server(){
     for (std::map<int, Client*>::iterator it = _Clients.begin(); it != _Clients.end(); ++it)
@@ -72,6 +64,7 @@ void Server::runServer(){
        for (int i = 0; i < nFds ; i++){
         _handleEvent(_events[i]);
        }
+       checkTimeouts();
     }
 }
 void Server::_handleEvent(const epoll_event& ev){
@@ -92,7 +85,6 @@ void Server::_handleEvent(const epoll_event& ev){
     }
     else if (ev.events & EPOLLOUT){
         _ClientWrite(ev_fd);
-        // _closeCon(ev_fd);
     }
 }
 
@@ -100,17 +92,17 @@ void Server::_handleEvent(const epoll_event& ev){
 /// READ && WRITE ) EVENTS
 void Server::_writeEvent(int epollFd, int fd){
     epoll_event event;
-    event.events = EPOLLOUT ;//;| EPOLLET;
+    event.events = EPOLLOUT ;
+    event.data.fd = fd;
+    epoll_ctl(epollFd, EPOLL_CTL_MOD, fd, &event);
+}
+void Server::_readEvent(int epollFd, int fd){
+    epoll_event event;
+    event.events = EPOLLIN ;
     event.data.fd = fd;
     epoll_ctl(epollFd, EPOLL_CTL_MOD, fd, &event);
 }
 
-void Server::_readEvent(int epollFd, int fd){
-    epoll_event event;
-    event.events = EPOLLIN ;//| EPOLLET;
-    event.data.fd = fd;
-    epoll_ctl(epollFd, EPOLL_CTL_MOD, fd, &event);
-}
 /// READ && WRITE
 void Server::_ClientRead(int cliFd){
     char buffer[BUFFER_SIZE];
@@ -145,7 +137,6 @@ void Server::_ClientWrite(int cliFd){
         }
     }
     if (!client->getdataPending() && !client->getsendingFile()){
-        // _closeCon(cliFd);
         _readEvent(_epollFd, cliFd);
     }
 }
@@ -159,7 +150,7 @@ void Server::_AcceptCon(int FdServer){
 		int cliFd = accept(FdServer, (sockaddr*)&cliAdd, &cliAddLen);
 		if (cliFd == -1){
 			if (errno == EAGAIN || errno == EWOULDBLOCK){break;}
-			std::string msg = "accept failed: ";
+			std::string msg = "Accept failed: ";
 			this->_MsgErr(_toString(msg + strerror(errno)));
 			break;
 		}
@@ -178,21 +169,37 @@ void Server::_AcceptCon(int FdServer){
 		}
         _cliCount++;
 		_Clients[cliFd] = new Client(_server ,_cliCount);
+        this->_Msg("Client ID=[" + _toString(_cliCount) + "] Connected");
 	}
 }
 
 /// CLOSE CONECTION
 void Server::_closeCon(int FdClient){
-    epoll_ctl(_epollFd, EPOLL_CTL_DEL, FdClient, NULL);
     int id = 0;
     std::map<int, Client*>::iterator it = _Clients.find(FdClient);
     if (it != _Clients.end()) {
         id = it->second->getID();
+        int fd = it->first;
+        epoll_ctl(_epollFd, EPOLL_CTL_DEL, fd, NULL);
+        close(fd);
         delete it->second;
        _Clients.erase(it);
+       this->_Msg("Connection closed ID=[" + _toString(id) + "]");
     }
-    close(FdClient);
-    this->_Msg("Connection closed: Client id = " + _toString(id));
+    
+}
+void Server::checkTimeouts() {
+    std::map<int, Client*>::iterator it = _Clients.begin();
+    if (it != _Clients.end()) {
+        if (it->second->timeOut()) {
+            int fd = it->first;
+            ++it;
+            _closeCon(fd);
+        }
+        else{
+            ++it;
+        }
+    }
 }
 
 /// CHECK NEW CLIENT

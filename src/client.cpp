@@ -26,6 +26,29 @@ void Client::dataSent(ssize_t bySent) {
 }
 bool Client::timeOut() { return (time(NULL) - _lastActive) > 50; }
 
+// void Client::addBuffer(char *buf, ssize_t byRead){
+//     this->_requBuf.append(buf, byRead);
+//     this->_lastActive = time(NULL);
+
+//     if (!this->requCheck) {
+//         size_t headerEnd = this->_requBuf.find("\r\n\r\n");
+//         if (headerEnd != std::string::npos) {
+//             this->requCheck = true;
+//         }
+//     }
+//     if (this->requCheck && !this->requCheckcomp) {
+//         size_t headerEnd = this->_requBuf.find("\r\n\r\n");
+        
+//         if (headerEnd != std::string::npos) {
+//             size_t bodyStart = headerEnd + 4;
+//             size_t totalSize = this->_requBuf.size();
+//             size_t bodySize = (totalSize > bodyStart) ? (totalSize - bodyStart) : 0;
+//             if (bodySize >= this->_contentLength) {
+//                 this->requCheckcomp = true;
+//             }
+//         }
+//     }
+// }
 void Client::addBuffer(char *buf, ssize_t byRead){
     this->_requBuf.append(buf, byRead);
     this->_lastActive = time(NULL);
@@ -34,6 +57,15 @@ void Client::addBuffer(char *buf, ssize_t byRead){
         size_t headerEnd = this->_requBuf.find("\r\n\r\n");
         if (headerEnd != std::string::npos) {
             this->requCheck = true;
+            size_t pos = this->_requBuf.find("Content-Length: ");
+            if (pos != std::string::npos && pos < headerEnd) {
+                pos += 16;
+                size_t endPos = this->_requBuf.find("\r\n", pos);
+                if (endPos != std::string::npos) {
+                    std::string lenStr = this->_requBuf.substr(pos, endPos - pos);
+                    this->_contentLength = std::atoll(lenStr.c_str());
+                }
+            }
         }
     }
     if (this->requCheck && !this->requCheckcomp) {
@@ -45,18 +77,18 @@ void Client::addBuffer(char *buf, ssize_t byRead){
             size_t bodySize = (totalSize > bodyStart) ? (totalSize - bodyStart) : 0;
             if (bodySize >= this->_contentLength) {
                 this->requCheckcomp = true;
+                std::cerr << "REQUEST COMPLETE!" << std::endl;
             }
         }
     }
 }
-
 void Client::clearRequs(){
     this->_requBuf.clear();
     this->requCheck = false;
 }
 void Client::readnextChunk() {
     if (!this->_file.is_open()) return; // res
-
+    _lastActive = time(NULL);
     if (_bySent == static_cast<ssize_t>(_respoBuf.size())) {
         _respoBuf.clear();
         _bySent = 0;
@@ -169,12 +201,13 @@ void Client::PostMethod(Request& req, Response& res){
     }
     if (conType.find("multipart/form-data") != std::string::npos){
         std::vector<FormPart> content = req.MultipartBody(req.getBody(), conType);
+        if (content.empty()){this->_respoBuf =  res.ErrorResponse(400); return;}
         std::map<std::string, std::string> form;
         for (std::vector<FormPart>::const_iterator it = content.begin(); it != content.end(); ++it) {
             const FormPart& part = *it;
             if (!part.filename.empty()) {
-
                 std::string uploadPath = res.getUploadFilename(req.loc_config.upload_path, part.filename, _toString(_lastActive));
+                std::cerr << part.filename << std::endl;
                 std::ofstream out(uploadPath.c_str(), std::ios::binary);
                 if (!out.is_open()) {this->_respoBuf = res.ErrorResponse(500);return;}
                 out.write(part.content.c_str(), part.content.size());
@@ -183,12 +216,10 @@ void Client::PostMethod(Request& req, Response& res){
                 form[part.name] = part.content;
             }
         }
-        std::cerr << "done" << std::endl;
         std::string body = "File uploaded successfully";
         std::string headers = res.getHeaderResponse(".txt",body.size(), 201) + res.Connectionstatus("close");
         this->_respoBuf = headers + body;
         std::cerr << _respoBuf << std::endl;
-        return;
     }
     else if (conType.find("application/x-www-form-urlencoded") != std::string::npos){
         std::map<std::string, std::string> query = req._FormUrlDec(req.getQuery()); 

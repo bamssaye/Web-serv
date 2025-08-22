@@ -50,9 +50,7 @@ public:
 	Server (ServerConfig& servers);
 	~Server();
 	///
-
-	// template <typename T>
-	// std::string					_toString(T value);
+	void checkTimeouts();
 	void 						initServer();
 	void 						runServer();
 	std::vector<int> 			getListFd;		

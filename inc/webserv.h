@@ -34,7 +34,7 @@
 #include <errno.h>
 #include <ctime>
 
-#define MAX_EVENTS 100
+#define MAX_EVENTS 10
 #define BUFFER_SIZE 8192
 
 
@@ -89,5 +89,6 @@ std::string _toString(T value)
     std::ostringstream oss;
     oss << value;
     return oss.str();
-}
+};
+
 #endif

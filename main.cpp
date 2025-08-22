@@ -10,6 +10,7 @@ int main(int argc, char **argv) {
         Parser.parse();
 		Parser.displayConfigs();
         Server serve(Parser._server);
+        serve.runServer();
     }catch(std::exception& e){
         std::cerr << e.what() << std::endl;
     }
