@@ -86,10 +86,6 @@ void Request::_parseRequestLine(std::string& RqLine){
     }
     if (_httpV != "HTTP/1.0" && _httpV != "HTTP/1.1")
         _isvalid = true;
-    if (!std::count(loc_config.allowed_methods.begin(), loc_config.allowed_methods.end(), _method)
-        && loc_config.allowed_methods.size() > 0) {
-        _isvalid = true;
-    }
 }
 void Request::_parseHeaderFields(std::istringstream& RqHeaders){
 	std::string buffer;

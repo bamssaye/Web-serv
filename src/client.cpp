@@ -118,6 +118,11 @@ void Client::HttpRequest(){
         this->_respoBuf = res.ErrorResponse(404, this->server.error_pages);
         return;
     }
+    if (!std::count(rq.loc_config.allowed_methods.begin(), rq.loc_config.allowed_methods.end(), rq.getMethod())
+        && rq.loc_config.allowed_methods.size() > 0) {
+        this->_respoBuf = res.ErrorResponse(400, this->server.error_pages);
+        return;
+    }
     if (rq.loc_config.return_code != 0) {
             this->_respoBuf = res.getRedirectResponse(rq.loc_config.return_url, rq.loc_config.return_code);
         return;
