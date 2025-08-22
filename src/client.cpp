@@ -34,15 +34,6 @@ void Client::addBuffer(char *buf, ssize_t byRead){
         size_t headerEnd = this->_requBuf.find("\r\n\r\n");
         if (headerEnd != std::string::npos) {
             this->requCheck = true;
-            size_t pos = this->_requBuf.find("Content-Length: ");
-            if (pos != std::string::npos && pos < headerEnd) {
-                pos += 16;
-                size_t endPos = this->_requBuf.find("\r\n", pos);
-                if (endPos != std::string::npos) {
-                    std::string lenStr = this->_requBuf.substr(pos, endPos - pos);
-                    this->_contentLength = std::atoll(lenStr.c_str());
-                }
-            }
         }
     }
     if (this->requCheck && !this->requCheckcomp) {
@@ -54,7 +45,6 @@ void Client::addBuffer(char *buf, ssize_t byRead){
             size_t bodySize = (totalSize > bodyStart) ? (totalSize - bodyStart) : 0;
             if (bodySize >= this->_contentLength) {
                 this->requCheckcomp = true;
-                std::cerr << "REQUEST COMPLETE!" << std::endl;
             }
         }
     }
@@ -65,7 +55,7 @@ void Client::clearRequs(){
     this->requCheck = false;
 }
 void Client::readnextChunk() {
-    if (!this->_file.is_open()) return;
+    if (!this->_file.is_open()) return; // res
 
     if (_bySent == static_cast<ssize_t>(_respoBuf.size())) {
         _respoBuf.clear();
@@ -100,7 +90,9 @@ void Client::HttpRequest(){
     
     Request rq(_requBuf);
     Response res;
-    if(!rq.isValidHeaders()){}
+    if(rq.isValidHeaders()){
+        this->_respoBuf =  res.ErrorResponse(400); return;
+    }
     if (!rq.findBestLocation(rq.getUri(), this->server)){
         this->_respoBuf = res.ErrorResponse(403);
         return;
@@ -110,7 +102,6 @@ void Client::HttpRequest(){
         return;
     }
     rq.getFullPath(rq.getUri(), rq.loc_config);
-
     std::string method = rq.getMethod();
     if (method == "GET") {
         GetMethod(rq, res);
@@ -165,9 +156,14 @@ void Client::GetMethod(Request& req, Response& res){
 }
 
 void Client::PostMethod(Request& req, Response& res){
+    struct stat st;
+    
+    if (stat(req.loc_config.upload_path.c_str(), &st) < 0){
+        this->_respoBuf =  res.ErrorResponse(404); return;
+    }
     std::string conType = req.getHeadr("Content-Type");
     long long conlen = req.getcontentLen();
-    if (req.getHeadr("Content-Length").empty() || conlen > server.client_max_body_size || conlen < 0 ){
+    if (conlen > server.client_max_body_size){
         this->_respoBuf = res.ErrorResponse(400);
         return;
     }
@@ -177,6 +173,7 @@ void Client::PostMethod(Request& req, Response& res){
         for (std::vector<FormPart>::const_iterator it = content.begin(); it != content.end(); ++it) {
             const FormPart& part = *it;
             if (!part.filename.empty()) {
+
                 std::string uploadPath = res.getUploadFilename(req.loc_config.upload_path, part.filename, _toString(_lastActive));
                 std::ofstream out(uploadPath.c_str(), std::ios::binary);
                 if (!out.is_open()) {this->_respoBuf = res.ErrorResponse(500);return;}
@@ -186,9 +183,11 @@ void Client::PostMethod(Request& req, Response& res){
                 form[part.name] = part.content;
             }
         }
+        std::cerr << "done" << std::endl;
         std::string body = "File uploaded successfully";
-        std::string headers = res.getHeaderResponse(".text",body.size(), 200) + res.Connectionstatus("close");
+        std::string headers = res.getHeaderResponse(".txt",body.size(), 201) + res.Connectionstatus("close");
         this->_respoBuf = headers + body;
+        std::cerr << _respoBuf << std::endl;
         return;
     }
     else if (conType.find("application/x-www-form-urlencoded") != std::string::npos){

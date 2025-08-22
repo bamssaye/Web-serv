@@ -19,7 +19,7 @@ $(OBJDIR)/%.o: %.cpp
 all: $(NAME)
 
 $(NAME): $(OBJS)
-	$(CXX) $(CXXFLAGS) $(OBJS) -o $(NAME)
+	$(CXX) $(CXXFLAGS) $(OBJDIR)/*.o -o $(NAME)
 clean:
 	rm -rf $(OBJDIR)
 fclean: clean

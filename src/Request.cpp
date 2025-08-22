@@ -1,13 +1,14 @@
 #include "../inc/Request.hpp"
 
 Request::Request(std::string& reqMsg):_boday(""),_isvalid(false), _contentLength(-1){
-    std::cout << reqMsg << std::endl;
+    
     std::istringstream ss(reqMsg);
     std::string reqLine;
     std::getline(ss, reqLine);
     this->_parseRequestLine(reqLine);
     this->_parseHeaderFields(ss);
     size_t pos_end = reqMsg.find("\r\n\r\n");
+    // std::cerr << reqMsg.substr(0,pos_end) << std::endl;
 	_boday = reqMsg.substr(pos_end + 4);
     // std::cout << _boday << std::endl;
 }
@@ -110,7 +111,8 @@ void Request::_parseHeaderFields(std::istringstream& RqHeaders){
             break;
         }
 	}
-    
+    if (_method == "POST" && (getHeadr("Content-Length").empty() || getHeadr("Content-Type").empty() || _contentLength <= 0)){
+        _isvalid = true;}
 }
 
 ///

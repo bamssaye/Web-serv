@@ -69,9 +69,6 @@ void Server::runServer(){
                 continue;
             throw std::runtime_error("epoll_wait faild.");
        }
-    //    if (!nFds){
-    //     //clean old client;
-    //    }
        for (int i = 0; i < nFds ; i++){
         _handleEvent(_events[i]);
        }
@@ -81,17 +78,21 @@ void Server::_handleEvent(const epoll_event& ev){
     int ev_fd = ev.data.fd;
 
     if (ev.events & (EPOLLERR | EPOLLHUP)){
-
         _MsgErr("Client Error on Fd : " + _toString(ev_fd));
         _closeCon(ev_fd);
         return;
     }
     if (_isNewClient(ev_fd)){
-        if (ev.events & EPOLLIN){ _AcceptCon(ev_fd); }
+        if (ev.events & EPOLLIN){ 
+            _AcceptCon(ev_fd); 
+        }
     }
-    else{
-        if (ev.events & EPOLLIN){ _ClientRead(ev_fd);}
-        else if (ev.events & EPOLLOUT){ _ClientWrite(ev_fd);}
+    if (ev.events & EPOLLIN){ 
+        _ClientRead(ev_fd);
+    }
+    else if (ev.events & EPOLLOUT){
+        _ClientWrite(ev_fd);
+        // _closeCon(ev_fd);
     }
 }
 
@@ -143,8 +144,8 @@ void Server::_ClientWrite(int cliFd){
             client->readnextChunk();
         }
     }
-    
     if (!client->getdataPending() && !client->getsendingFile()){
+        // _closeCon(cliFd);
         _readEvent(_epollFd, cliFd);
     }
 }
@@ -159,8 +160,7 @@ void Server::_AcceptCon(int FdServer){
 		if (cliFd == -1){
 			if (errno == EAGAIN || errno == EWOULDBLOCK){break;}
 			std::string msg = "accept failed: ";
-			msg.append(strerror(errno));
-			this->_MsgErr(msg);
+			this->_MsgErr(_toString(msg + strerror(errno)));
 			break;
 		}
 		if (_setNonBlocking(cliFd) == -1){
@@ -183,14 +183,16 @@ void Server::_AcceptCon(int FdServer){
 
 /// CLOSE CONECTION
 void Server::_closeCon(int FdClient){
-        epoll_ctl(_epollFd, EPOLL_CTL_DEL, FdClient, NULL);
-        std::map<int, Client*>::iterator it = _Clients.find(FdClient);
-        if (it != _Clients.end()) {
-            delete it->second;
-           _Clients.erase(it);
-        }
-        close(FdClient);
-        this->_Msg("Connection closed: Client id = " + _toString(FdClient));
+    epoll_ctl(_epollFd, EPOLL_CTL_DEL, FdClient, NULL);
+    int id = 0;
+    std::map<int, Client*>::iterator it = _Clients.find(FdClient);
+    if (it != _Clients.end()) {
+        id = it->second->getID();
+        delete it->second;
+       _Clients.erase(it);
+    }
+    close(FdClient);
+    this->_Msg("Connection closed: Client id = " + _toString(id));
 }
 
 /// CHECK NEW CLIENT

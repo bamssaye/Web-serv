@@ -34,7 +34,7 @@
 #include <errno.h>
 #include <ctime>
 
-#define MAX_EVENTS 1024
+#define MAX_EVENTS 100
 #define BUFFER_SIZE 8192
 
 
