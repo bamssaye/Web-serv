@@ -1,5 +1,6 @@
 NAME =  WebServ
 OBJDIR = obj
+TMP = tmp
 CXX = c++
 CXXFLAGS = -Wall -Wextra -Werror -std=c++98  -fsanitize=address -g3
 RM = rm -rf
@@ -19,9 +20,10 @@ $(OBJDIR)/%.o: %.cpp
 all: $(NAME)
 
 $(NAME): $(OBJS)
+	@mkdir -p $(TMP)
 	$(CXX) $(CXXFLAGS) $(OBJDIR)/*.o -o $(NAME)
 clean:
 	rm -rf $(OBJDIR)
 fclean: clean
-	rm -f $(NAME)
+	rm -rf $(NAME) $(TMP)
 re: fclean all

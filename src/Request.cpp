@@ -7,8 +7,12 @@ Request::Request(std::string& reqMsg):_boday(""),_isvalid(false), _contentLength
     std::getline(ss, reqLine);
     this->_parseRequestLine(reqLine);
     this->_parseHeaderFields(ss);
+    
     size_t pos_end = reqMsg.find("\r\n\r\n");
-	_boday = reqMsg.substr(pos_end + 4);
+    if (_contentLength < MAX_SIZE){}
+        // std::cerr << "Resqqqqq : \n" << reqMsg << std::endl;
+    _boday = reqMsg.substr(pos_end + 4);
+
 }
 Request::~Request(){}
 bool isHexChar(char c){
@@ -57,7 +61,7 @@ std::map<std::string, std::string> Request::_FormUrlDec(const std::string& body)
 bool Request::isValidHeaders() const { return this->_isvalid;}
 std::map<std::string, std::string>  Request::getHeaders(){return this->_headers;}
 std::string Request::getQuery(){return this->_Query;}
-std::string Request::getBody(){return this->_boday;}
+std::string &Request::getBody(){return this->_boday;}
 std::string Request::getCgipass(){return this->_cgi_pass;}
 std::string Request::getHeadr(std::string key){
     std::map<std::string, std::string>::iterator  it = _headers.find(key);
@@ -104,6 +108,7 @@ void Request::_parseHeaderFields(std::istringstream& RqHeaders){
 			_headers[buffer.substr(0, pos)] = value.erase(value.find_last_not_of("\t"));        
         }else{
             _headers.clear();
+            
             _isvalid = true;
             break;
         }
@@ -251,19 +256,31 @@ std::vector<FormPart> Request::MultipartBody(const std::string& body, const std:
     std::string del = "--" + b;
     size_t pos = 0;
     size_t next;
+    std::vector<FormPart> allpart;
+    std::string cont;
 
-    while ((next = body.find(del, pos)) != std::string::npos) {
+    if ( _contentLength > MAX_SIZE){
+        std::ifstream   _file;
+        _file.open(body.c_str(), std::ios::binary);
+        if (!_file.is_open()) {allpart.clear(); return allpart;}
+        cont.assign((std::istreambuf_iterator<char>(_file)),
+                            (std::istreambuf_iterator<char>()));
+        _file.close();
+    }
+    else{
+        cont = body;
+    }
+    while ((next = cont.find(del, pos)) != std::string::npos) {
         if (next > pos) {
-            std::string part = body.substr(pos, next - pos);
+            std::string part = cont.substr(pos, next - pos);
             all.push_back(part);
         }
         pos = next + del.length();
-        if (body.substr(pos, 2) == "--")
+        if (cont.substr(pos, 2) == "--")
             break;
-        if (body.substr(pos, 2) == "\r\n")
+        if (cont.substr(pos, 2) == "\r\n")
             pos += 2;
     }
-    std::vector<FormPart> allpart;
     for (size_t i = 0; i < all.size(); ++i) {
         try{
         FormPart p = BoundryBody(all[i]);

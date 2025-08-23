@@ -14,6 +14,8 @@ class Client{
     bool            _sendingFile;
     size_t       _contentLength;
     //
+    std::ofstream   __readBuffer;
+    std::string     _requfilename;
 
 public:
     Client();
@@ -30,6 +32,7 @@ public:
     const char*     getdataPending();
     size_t          getSizePending();
     bool            getsendingFile();
+    std::string     &getrequBuf() {return _requBuf;};
     int             getID();
     //
     void            addBuffer(char *buf, ssize_t byRead);
@@ -47,5 +50,10 @@ public:
     void DeleteMethod(Request& req, Response& res);
     void Cgi_call(Request& rq, Response& res);
 
-
+    // MEE 
+    bool getRequHeaderCheck();
+    void getRequBodyCheck();
+    size_t getContentLength(){ return _contentLength;};
+    void readlargeFileRequest(const char *buf, ssize_t byRead);
+    void genefilename();
 };

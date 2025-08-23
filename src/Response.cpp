@@ -56,7 +56,8 @@ std::string Response::ErrorResponse(int code, std::map<int, std::string> error_p
         }
         res << "HTTP/1.0 " << code << " " << it->second << "\r\n";
         res << "Content-Type: text/html\r\n";
-        res << "Content-Length: " << body.size() << "\r\n\r\n";
+        res << "Content-Length: " << body.size() << "\r\n";
+        res << Connectionstatus("close");
         res << body;
         return res.str();
 }

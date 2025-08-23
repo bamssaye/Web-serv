@@ -66,7 +66,7 @@ void Server::_handleEvent(const epoll_event& ev){
     int ev_fd = ev.data.fd;
 
     if (ev.events & (EPOLLERR | EPOLLHUP)){
-        _MsgErr("Client Error on Fd : " + _toString(ev_fd));
+        _MsgErr("Client Error : " + _toString(ev_fd));
         _closeCon(ev_fd);
         return;
     }
@@ -97,6 +97,29 @@ void Server::_readEvent(int epollFd, int fd){
     epoll_ctl(epollFd, EPOLL_CTL_MOD, fd, &event);
 }
 
+void Server::_ReadContent(char *buf, ssize_t byRead, int cliFd){
+    
+    if (_Clients[cliFd]->getRequHeaderCheck()){
+        size_t len = _Clients[cliFd]->getContentLength();
+        if (len > MAX_SIZE){
+            _Clients[cliFd]->readlargeFileRequest(buf, byRead);
+            _Clients[cliFd]->addBuffer(buf, byRead);
+        }
+        else{
+            _Clients[cliFd]->addBuffer(buf, byRead);
+        }
+    }
+    else{
+        _Clients[cliFd]->addBuffer(buf, byRead);
+        size_t headerEnd = _Clients[cliFd]->getrequBuf().find("\r\n\r\n");
+        if (headerEnd != std::string::npos) {
+            size_t bodyStart = headerEnd + 4;
+            std::string body = _Clients[cliFd]->getrequBuf().substr(bodyStart);
+            _Clients[cliFd]->readlargeFileRequest(body.c_str(), body.size());
+        } 
+        // std::cerr << "req.getQuery(1)" << std::endl;      
+    }
+}
 void Server::_ClientRead(int cliFd){
     char buffer[BUFFER_SIZE];
     ssize_t bytes;
@@ -105,7 +128,8 @@ void Server::_ClientRead(int cliFd){
     if (_Clients.find(cliFd) == _Clients.end())
         return;
     bytes = recv(cliFd, buffer, BUFFER_SIZE, 0);
-    _Clients[cliFd]->addBuffer(buffer, bytes);
+    //  _Clients[cliFd]->addBuffer(buffer, bytes);
+    _ReadContent(buffer, bytes, cliFd);
     if (_Clients[cliFd]->requCheck && _Clients[cliFd]->requCheckcomp){
             _Clients[cliFd]->HttpRequest();
             _writeEvent(this->_epollFd, cliFd);

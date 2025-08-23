@@ -42,8 +42,12 @@ class Server : public InfoSocket {//}, public StatusCode {
 	void						_closeCon(int FdClient);
 	bool						_isNewClient(int FdClient);
 	void						_AcceptCon(int FdServer);
+	///
 	void						_ClientRead(int cliFd);
 	void						_ClientWrite(int cliFd);
+
+	void 						_ReadContent(char *buf, ssize_t byRead, int cliFd);
+	///
 	void 						_writeEvent(int epollFd, int fd);
 	void 						_readEvent(int epollFd, int fd);
 public:

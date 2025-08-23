@@ -4,6 +4,7 @@
 
 class Request{
     std::string                         _method;
+    // std::string                         _reqFile;
     std::string                         _uriPath;
     std::string                         _httpV;
     std::map<std::string, std::string>  _headers;
@@ -21,7 +22,7 @@ public:
     //
     std::map<std::string, std::string>  getHeaders();//{return this->_headers;}
     std::string                         getQuery();//{return this->_Query;}
-    std::string                         getBody();//{return this->_boday;}
+    std::string                         &getBody();//{return this->_boday;}
     std::string                         getCgipass();//{return this->_cgi_pass;}
     std::string                         getHeadr(std::string key);
     std::string                         getMethod();//{ return this->_method;}

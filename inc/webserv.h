@@ -36,7 +36,7 @@
 
 #define MAX_EVENTS 10
 #define BUFFER_SIZE 8192
-
+#define MAX_SIZE 1048576
 
 struct FormPart {
 	std::string name;
