@@ -1,6 +1,6 @@
 #include "../inc/CgiHandler.hpp"
 #include "../inc/Request.hpp"
-
+#include "../inc/Library.hpp"
 // ///////
 CgiHandler::CgiHandler(Request& request){
     _initEnv(request);
@@ -39,9 +39,6 @@ void CgiHandler::_initEnv(Request& request) {
         }
         _env[key] = it->second;
     }
-
-    std::cout << _env["REMOTE_ADDR"] << "                                     " << _env["REMOTE_USER"] << std::endl;
-
     _env.insert(request.loc_config.cgi_params.begin(), request.loc_config.cgi_params.end());
 }
 
@@ -79,7 +76,7 @@ bool CgiHandler::executeCgi(Request& request, Client& client) {
     try {
         env = _getEnvAsCstrArray();
     } catch (...) {
-        std::cerr << "Environment allocation failed." << std::endl;
+        Library::printMsg("Environment allocation failed.");
         return false;
     }
 
@@ -87,7 +84,7 @@ bool CgiHandler::executeCgi(Request& request, Client& client) {
         std::string file = client.getrequfilename();
         int fd = open(file.c_str(), O_RDWR);
         if (fd == -1) {
-            std::cerr << "Failed to open temporary file for large request body." << std::endl;
+            Library::printMsg("Failed to open temporary file for large request body.");
             for (size_t i = 0; env[i]; i++)
                 delete[] env[i];
             delete[] env;
@@ -104,14 +101,13 @@ bool CgiHandler::executeCgi(Request& request, Client& client) {
     client.startTime = std::time(NULL);
     client.cgi_running = true;
     if (client.cgi_pid == -1) {
-        std::cerr << "Fork failed." << std::endl;
+        Library::printMsg("Fork failed.");
         return false;
     } else if (client.cgi_pid == 0) {
         dup2(client.fdIn, STDIN_FILENO);
         dup2(client.fdOut, STDOUT_FILENO);
         std::string cgi_path = request.getCgipass();
         if (cgi_path.empty()) {
-            std::cerr << "CGI path       is empty." << std::endl;
             write(STDOUT_FILENO, "Status: 500\r\n\r\n", 16);
             exit(1);
         }
@@ -120,9 +116,7 @@ bool CgiHandler::executeCgi(Request& request, Client& client) {
             const_cast<char*>(_env["SCRIPT_NAME"].c_str()),
             NULL 
         };
-
         execve(cgi_path.c_str(), argv, env);
-        std::cerr << "Execve failed." << std::endl;
         write(STDOUT_FILENO, "Status: 500\r\n\r\n", 16);
         exit(1);
     } else {

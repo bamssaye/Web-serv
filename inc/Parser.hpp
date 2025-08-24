@@ -8,7 +8,6 @@ public:
     ~Parser();
 
     void parse();
-    void displayConfigs();
 
     std::string               _filename;
     ServerConfig              _server;

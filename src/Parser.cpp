@@ -343,53 +343,6 @@ void Parser::validateAutoindex(const std::string& val) {
     }
 }
 
-void Parser::displayConfigs() {
-    const ServerConfig& s = this->_server;
-    std::cout << "\n\033[1;34m## Server ##\033[0m\n";
-    std::cout << "  \033[1mListen:\033[0m ";
-    for (size_t i = 0; i < s.listen.size(); ++i)
-    {
-        std::cout << s.listen[i].first << ":" << s.listen[i].second <<
-
-            (i < s.listen.size() - 1 ? ", " : "");
-    }
-    std::cout << "\n  \033[1mClient Max Body Size:\033[0m " << s.client_max_body_size << " bytes\n";
-    std::cout << "  \033[1mError Pages:\033[0m ";
-    for (std::map<int, std::string>::const_iterator it = s.error_pages.begin(); it != s.error_pages.end(); ++it) {
-        std::cout << it->first << " -> " << it->second << "     ";
-    }
-    std::cout << "\n";
-    std::cout << "  \033[1mLocations (" << s.locations.size() << "):\033[0m\n";
-    for (size_t k = 0; k < s.locations.size(); ++k) {
-        const LocationConfig& l = s.locations[k];
-        std::cout << "    \033[1;32m-> Location Path:\033[0m " << l.path << "\n";
-        std::cout << "      - Root: " << l.root << "\n";
-        std::cout << "      - Index: " << l.index << "\n";
-        std::cout << "      - Autoindex: " << (l.autoindex ? "on" : "off") << "\n";
-        if (l.return_code != 0) {
-            std::cout << "      - Redirect: " << l.return_code << " -> " << l.return_url << "\n";
-        }
-        std::cout << "      - Allowed Methods: ";
-        for (size_t m = 0; m < l.allowed_methods.size(); ++m) {
-            std::cout << l.allowed_methods[m] << " ";
-        }
-        std::cout << "\n";
-        for (std::map<std::string, std::string>::const_iterator it = l.cgi.begin(); it != l.cgi.end(); ++it) {
-            std::cout << "      - CGI: " << it->first << " -> " << it->second << "\n";
-        }
-        if (!l.upload_path.empty()) {
-            std::cout << "      - Upload Path: " << l.upload_path << "\n";
-        }
-        if (!l.cgi_params.empty()) {
-            std::cout << "\n      - CGI Parameters: ";
-            for (std::map<std::string, std::string>::const_iterator it = l.cgi_params.begin(); it != l.cgi_params.end(); ++it) {
-                std::cout << it->first << "=" << it->second << " ";
-            }
-        }
-        std::cout << "\n";
-    }
-}
-
 unsigned long Parser::custom_inet_addr(const std::string& ip_str) {
     std::stringstream ss(ip_str);
     std::string segment;

@@ -2,7 +2,8 @@ NAME =  WebServ
 OBJDIR = obj
 TMP = tmp
 CXX = c++
-CXXFLAGS = -Wall -Wextra -Werror -std=c++98  -fsanitize=address -g3
+SAN = -fsanitize=address -g3
+CXXFLAGS = -Wall -Wextra -Werror -std=c++98  $(SAN)
 RM = rm -rf
 #################
 VPATH = inc:src
