@@ -33,23 +33,19 @@
 
 #include <errno.h>
 #include <ctime>
+#include <limits>
 
-#define MAX_EVENTS 10
-#define BUFFER_SIZE 8192
-#define MAX_SIZE 1048576
+
+#define MAX_EVENTS  10 // MAX event 
+#define BUFFER_SIZE 8192 // 8kb
+#define MAX_SIZE    524288 // 500kb
+#define CGI_BUFSIZE 4096 
 
 struct FormPart {
 	std::string name;
 	std::string filename;
 	std::string contentType;
 	std::string content;
-};
-
-enum Methods
-{
-	GET,
-	DELETE,
-	POST,
 };
 
 struct LocationConfig {

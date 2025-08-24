@@ -2,7 +2,25 @@
 #include "../inc/Request.hpp"
 #include "../inc/Response.hpp"
 #include "../inc/CgiHandler.hpp"
+#include "../inc/Library.hpp"
 
+/// /////
+
+InfoSocket::InfoSocket():_fd(-1), port(0), ip(0){
+    memset(&this->addr, 0, sizeof(this->addr));
+    memset(&this->sock_event, 0, sizeof(this->sock_event));
+}
+InfoSocket::~InfoSocket(){}
+
+
+int InfoSocket::getFd() const{return _fd;}
+int InfoSocket::setFd(int fd){ this->_fd = fd; return this->_fd < 0;}
+epoll_event& InfoSocket::getSockEvent(){ return sock_event;};
+socklen_t& InfoSocket::getsocklen(){ return addr_len; }
+sockaddr_in& InfoSocket::getSockaddr(){ return addr; }
+
+
+/// /////
 Server::Server (ServerConfig& servers) : InfoSocket(), _cliCount(0), _oP(1), _server(servers){
     this->initServer();
 }
@@ -12,15 +30,21 @@ Server::~Server(){
     _Clients.clear();
 }
 
-InfoSocket::InfoSocket():_fd(-1), port(0), ip(0){
-    memset(&this->addr, 0, sizeof(this->addr));
-    memset(&this->sock_event, 0, sizeof(this->sock_event));
+/// ///// Set && Run Server
+void InfoSocket::setSocket(int fd, uint16_t port, uint32_t ip, int ipVersion){
+	
+	this->_fd = fd;
+    this->port = port;
+    this->ip = ip;
+    this->addr_len = sizeof(sockaddr_in);
+
+	this->addr.sin_family = ipVersion;
+    this->addr.sin_port = htons(this->port);
+    this->addr.sin_addr.s_addr = htonl(this->ip);
+
+	this->sock_event.events = EPOLLIN;
+    this->sock_event.data.fd = this->_fd;
 }
-InfoSocket::~InfoSocket(){}
-
-void Server::_Msg(std::string m){ std::cout << m << std::endl;}
-void Server::_MsgErr(std::string m){ std::cerr << m << std::endl;}
-
 void Server::initServer(){
     if((this->_epollFd = epoll_create1(EPOLL_CLOEXEC)) == -1){
         throw std::runtime_error("epoll_create1 failed");}
@@ -46,11 +70,10 @@ void Server::initServer(){
             throw std::runtime_error("epoll_ctl failed");
         ++it;
     }
-    std::cout << "Server initialized." << std::endl;
+    Library::printMsg("\n\t   Webserv/1.0\n\tServer initialized.");
 }
-
 void Server::runServer(){
-    this->_Msg("Server listening.");
+    Library::printMsg("\tServer listening.\n\t" + std::string(20,'='));
     while(true){
        int nFds = epoll_wait(_epollFd, _events, MAX_EVENTS, -1);
        if (nFds == -1){
@@ -64,11 +87,13 @@ void Server::runServer(){
        checkTimeouts();
     }
 }
+
+/// ///// Handle Event
 void Server::_handleEvent(const epoll_event& ev){
     int ev_fd = ev.data.fd;
 
     if (ev.events & (EPOLLERR | EPOLLHUP)){
-        _MsgErr("Client Error : " + _toString(ev_fd));
+        Library::printMsgErr("Client Error : " + _toString(ev_fd));
         _closeCon(ev_fd);
         return;
     }
@@ -85,7 +110,7 @@ void Server::_handleEvent(const epoll_event& ev){
     }
 }
 
-
+/// ///// Change Event MOD {EPOLLOUT, EPOLLIN}
 void Server::_writeEvent(int epollFd, int fd){
     epoll_event event;
     event.events = EPOLLOUT ;
@@ -99,13 +124,13 @@ void Server::_readEvent(int epollFd, int fd){
     epoll_ctl(epollFd, EPOLL_CTL_MOD, fd, &event);
 }
 
+/// ///// Read Request from Client {Request > 1MB convert to file Mode}
 void Server::_ReadContent(char *buf, ssize_t byRead, int cliFd){
     
     if (_Clients[cliFd]->getRequHeaderCheck()){
         size_t len = _Clients[cliFd]->getContentLength();
         if (len > MAX_SIZE){
             _Clients[cliFd]->readlargeFileRequest(buf, byRead);
-            // _Clients[cliFd]->addBuffer(buf, byRead);// 3lach kat3mr f string
         }
         else{
             _Clients[cliFd]->addBuffer(buf, byRead);
@@ -119,18 +144,16 @@ void Server::_ReadContent(char *buf, ssize_t byRead, int cliFd){
             std::string body = _Clients[cliFd]->getrequBuf().substr(bodyStart);
             _Clients[cliFd]->readlargeFileRequest(body.c_str(), body.size());
         } 
-        // std::cerr << "req.getQuery(1)" << std::endl;      
     }
 }
 void Server::_ClientRead(int cliFd){
     char buffer[BUFFER_SIZE];
     ssize_t bytes;
 
-   
     if (_Clients.find(cliFd) == _Clients.end())
         return;
     bytes = recv(cliFd, buffer, BUFFER_SIZE, 0);
-    //  _Clients[cliFd]->addBuffer(buffer, bytes);
+    if (bytes < 0) {this->_closeCon(cliFd);  return;}
     _ReadContent(buffer, bytes, cliFd);
     if (_Clients[cliFd]->requCheck && _Clients[cliFd]->requCheckcomp){
             _Clients[cliFd]->HttpRequest();
@@ -140,6 +163,8 @@ void Server::_ClientRead(int cliFd){
         this->_closeCon(cliFd);   
     }
 }
+
+/// //// Write Response to Client (64kb -> ... -> Finish)
 void Server::_ClientWrite(int cliFd){
     std::map<int, Client *>::iterator it = _Clients.find(cliFd);
     if (it == _Clients.end())
@@ -160,20 +185,21 @@ void Server::_ClientWrite(int cliFd){
     }
 }
 
-void Server::_AcceptCon(int FdServer){
+/// /// Accepte New Connection {New Client}
+void Server::_AcceptCon(int eventFD){
 	sockaddr_in cliAdd;
 	socklen_t cliAddLen = sizeof(cliAdd);
 
 	while (true){
-		int cliFd = accept(FdServer, (sockaddr*)&cliAdd, &cliAddLen);
+		int cliFd = accept(eventFD, (sockaddr*)&cliAdd, &cliAddLen);
 		if (cliFd == -1){
 			if (errno == EAGAIN || errno == EWOULDBLOCK){break;}
 			std::string msg = "Accept failed: ";
-			this->_MsgErr(_toString(msg + strerror(errno)));
+			Library::printMsgErr(_toString(msg + strerror(errno)));
 			break;
 		}
 		if (_setNonBlocking(cliFd) == -1){
-			this->_MsgErr("Client socket Failed to set non-blocking.");
+			Library::printMsgErr("Client socket Failed to set non-blocking.");
 			close(cliFd);
 			continue;
 		}
@@ -181,16 +207,17 @@ void Server::_AcceptCon(int FdServer){
 		cliEvent.data.fd = cliFd;
 		cliEvent.events = EPOLLIN;
 		if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, cliFd, &cliEvent) == -1){
-			_MsgErr("Error: epoll_ctl ADD new client failed");
+			Library::printMsgErr("Error: epoll_ctl ADD new client failed");
 			close(cliFd);
 			continue;
 		}
         _cliCount++;
 		_Clients[cliFd] = new Client(_server ,_cliCount);
-        this->_Msg("Client ID=[" + _toString(_cliCount) + "] Connected");
+        Library::printMsg("Client ID=[" + _toString(_cliCount) + "] Connected");
 	}
 }
 
+/// /// CLose Connection {Remove Client}
 void Server::_closeCon(int FdClient){
     int id = 0;
     std::map<int, Client*>::iterator it = _Clients.find(FdClient);
@@ -201,18 +228,26 @@ void Server::_closeCon(int FdClient){
         close(fd);
         delete it->second;
        _Clients.erase(it);
-       this->_Msg("Connection closed ID=[" + _toString(id) + "]");
+       Library::printMsg("Connection closed ID=[" + _toString(id) + "]");
     }
     
 }
+
+// ///// check access Mode && Set Non Blocking
+int Server::_setNonBlocking(int fd){
+    int f = fcntl(fd, F_GETFL, 0);
+    if (f == -1)
+        return -1;
+    return fcntl(fd, F_SETFL, f | O_NONBLOCK);
+}
+
+/// ///
 void Server::checkTimeouts() {
     std::map<int, Client*>::iterator it = _Clients.begin();
-    while (it != _Clients.end()) {
+    while (it != _Clients.end()){
         bool should_close = false;
-        
-       if (it->second->cgi_running){
-
-            if (waitpid(it->second->cgi_pid, NULL, WNOHANG) > 0) {
+        if (it->second->cgi_running){
+            if (waitpid(it->second->cgi_pid, NULL, WNOHANG) > 0){
                 Request req;
                 it->second->get_cgi_response(it->second->fdOut, it->second->cgi_output);
                 it->second->close_cgi();
@@ -229,48 +264,21 @@ void Server::checkTimeouts() {
                 it->second->setResponse(res.ErrorResponse(504, this->_server.error_pages));
             }
             _writeEvent(this->_epollFd, it->first);
-    }
-
-        if (should_close) {
+        }
+        if (should_close){
             int fd_to_close = it->first;
             _closeCon(fd_to_close);
             it = _Clients.begin();
-        } else {
+        } 
+        else{
             ++it;
         }
     }
 }
-
 bool Server::_isNewClient(int FdClient){
 	if (std::find(_listfd.begin(), _listfd.end(), FdClient) != _listfd.end())
         return true;
 	return false;
 }
 
-int Server::_setNonBlocking(int fd){
-    int f = fcntl(fd, F_GETFL, 0);
-    if (f == -1)
-        return -1;
-    return fcntl(fd, F_SETFL, f | O_NONBLOCK);
-}
 
-void InfoSocket::setSocket(int fd, uint16_t port, uint32_t ip, int family){
-	
-	this->_fd = fd;
-    this->port = port;
-    this->ip = ip;
-    this->addr_len = sizeof(sockaddr_in);
-
-	this->addr.sin_family = family;
-    this->addr.sin_port = htons(this->port);
-    this->addr.sin_addr.s_addr = htonl(this->ip);
-
-	this->sock_event.events = EPOLLIN;
-    this->sock_event.data.fd = this->_fd;
-}
-
-int InfoSocket::getFd() const{return _fd;}
-int InfoSocket::setFd(int fd){ this->_fd = fd; return this->_fd < 0;}
-epoll_event& InfoSocket::getSockEvent(){ return sock_event;};
-socklen_t& InfoSocket::getsocklen(){ return addr_len; }
-sockaddr_in& InfoSocket::getSockaddr(){ return addr; }

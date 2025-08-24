@@ -4,9 +4,6 @@
 #include "client.hpp"
 
 
-#define CGI_BUFSIZE 4096
-
-
 class CgiHandler {
 public:
     CgiHandler(Request& request);
@@ -23,5 +20,4 @@ public:
 bool check_cgi_executable(Request& request);
 std::string parseCgiOutput(const std::string& rawOutput, Request& request);
 
-std::string to_string(size_t n);
 

@@ -19,7 +19,7 @@ public:
 	InfoSocket();
 	~InfoSocket();
 	//
-	void			setSocket(int fd, uint16_t port, uint32_t ip, int family);
+	void			setSocket(int fd, uint16_t port, uint32_t ip, int ipVersion);
 	int 			setFd(int fd);
 	int 			getFd() const;
 	sockaddr_in&	getSockaddr();
@@ -28,7 +28,7 @@ public:
 };
 
 ///////
-class Server : public InfoSocket {//}, public StatusCode {
+class Server : public InfoSocket {
 
 	std::map <int, Client*>		_Clients;
 	int							_cliCount;
@@ -43,7 +43,7 @@ class Server : public InfoSocket {//}, public StatusCode {
 	void						_handleEvent(const epoll_event& ev);
 	void						_closeCon(int FdClient);
 	bool						_isNewClient(int FdClient);
-	void						_AcceptCon(int FdServer);
+	void						_AcceptCon(int eventFD);
 	///
 	void						_ClientRead(int cliFd);
 	void						_ClientWrite(int cliFd);

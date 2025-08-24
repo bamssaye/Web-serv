@@ -1,82 +1,42 @@
 #include "../inc/Request.hpp"
+#include "../inc/Library.hpp"
 
+// /////
+Request::Request():_boday(""),_isvalid(false), _contentLength(-1){}
 Request::Request(std::string& reqMsg):_boday(""),_isvalid(false), _contentLength(-1){
-    
     std::istringstream ss(reqMsg);
     std::string reqLine;
     std::getline(ss, reqLine);
     this->_parseRequestLine(reqLine);
     this->_parseHeaderFields(ss);
-    
     size_t pos_end = reqMsg.find("\r\n\r\n");
-    if (_contentLength < MAX_SIZE){}
-        // std::cerr << "Resqqqqq : \n" << reqMsg << std::endl;
-    _boday = reqMsg.substr(pos_end + 4);
-
+    if (_contentLength < MAX_SIZE){
+        _boday = reqMsg.substr(pos_end + 4);
+    }
 }
 Request::~Request(){}
-Request::Request():_boday(""),_isvalid(false), _contentLength(-1){}
-bool isHexChar(char c){
-    return (std::isxdigit(static_cast<unsigned char>(c)));
-}
 
-std::string DecodeUrl(const std::string& str) {
-    std::ostringstream rzlt;
-    for (size_t i = 0; i < str.length(); ++i) {
-        char c = str[i];
-        if (c == '%') {
-            if (i + 2 >= str.length())
-                return std::string("");
-            char c1 = str[i + 1];
-            char c2 = str[i + 2];
-            if (!isHexChar(c1) || !isHexChar(c2))
-                return std::string("");
-            rzlt << static_cast<char>(std::strtol(str.substr(i + 1, 2).c_str(), NULL, 16));
-            i += 2;
-        } else if (c == '+') {
-            rzlt << ' ';
-        } else {
-            rzlt << c;
-        }
-    }
-    return rzlt.str();
-}
-std::map<std::string, std::string> Request::_FormUrlDec(const std::string& body) {
-    std::map<std::string, std::string> full;
-    std::istringstream _body(body);
-    std::string l;
-
-    while (std::getline(_body, l, '&')) {
-        size_t pos = l.find('=');
-        if (pos == std::string::npos){
-            full.clear();
-            return (full);
-        }
-        std::string key = DecodeUrl(l.substr(0, pos));
-        std::string value = DecodeUrl(l.substr(pos + 1));
-        full[key] = value;
-    }
-    return full;
-}
-///
-bool Request::isValidHeaders() const { return this->_isvalid;}
-std::map<std::string, std::string>  Request::getHeaders(){return this->_headers;}
-std::string Request::getQuery(){return this->_Query;}
-std::string &Request::getBody(){return this->_boday;}
-std::string Request::getCgipass(){return this->_cgi_pass;}
-std::string Request::getHeadr(std::string key){
+// ////
+bool                                Request::isValidHeaders() const {   return this->_isvalid;}
+std::map<std::string, std::string>  Request::getHeaders(){      return this->_headers;}
+std::string                         Request::getQuery(){        return this->_Query;}
+std::string                         &Request::getBody(){        return this->_boday;}
+std::string                         Request::getCgipass(){      return this->_cgi_pass;}
+std::string                         Request::getMethod(){       return this->_method;}
+std::string                         Request::getUri(){          return this->_uriPath;}
+std::string                         Request::getPath(){         return this->_path;}
+int                                 Request::getcontentLen(){   return this->_contentLength;}
+void                                Request::setCgipass(std::string cgi){this->_cgi_pass = cgi;}
+std::string                         Request::getHeadr(std::string key){
     std::map<std::string, std::string>::iterator  it = _headers.find(key);
     return (it != _headers.end()) ? it->second : "";
 }
-std::string Request::getMethod(){ return this->_method;}
-std::string Request::getUri(){return this->_uriPath;}
-std::string Request::getPath(){return this->_path;}
-long long   Request::getcontentLen(){return this->_contentLength;}
-void Request::setCgipass(std::string cgi){
-    this->_cgi_pass = cgi;
+void Request::setHeadr(std::string key, std::string value){
+    this->_headers[key] = value;
 }
-/// 
-void Request::_parseRequestLine(std::string& RqLine){
+
+/// /// 
+void                                Request::_parseRequestLine(std::string& RqLine){
     std::stringstream ss(RqLine);
     size_t queryPos;
 
@@ -92,7 +52,7 @@ void Request::_parseRequestLine(std::string& RqLine){
     if (_httpV != "HTTP/1.0" && _httpV != "HTTP/1.1")
         _isvalid = true;
 }
-void Request::_parseHeaderFields(std::istringstream& RqHeaders){
+void                                Request::_parseHeaderFields(std::istringstream& RqHeaders){
 	std::string buffer;
 	std::getline(RqHeaders, buffer);
 
@@ -103,7 +63,7 @@ void Request::_parseHeaderFields(std::istringstream& RqHeaders){
 		size_t pos = buffer.find(':', 0);
 		if (pos != std::string::npos){
             if (buffer.substr(0, pos) == "Content-Length"){
-                _contentLength = std::atoi(buffer.substr(pos + 2).c_str());
+                _contentLength = Library::stoi(buffer.substr(pos + 2));
             }
             std::string value = buffer.substr(pos + 2);
 			_headers[buffer.substr(0, pos)] = value.erase(value.find_last_not_of("\t"));        
@@ -118,9 +78,8 @@ void Request::_parseHeaderFields(std::istringstream& RqHeaders){
         _isvalid = true;}
 }
 
-///
-
-std::string Request::getDirContent(){
+/// ///
+std::string                         Request::getDirContent(){
 
     DIR* dir =  opendir(this->_path.c_str());
     if (!dir)
@@ -143,10 +102,7 @@ std::string Request::getDirContent(){
     content << "</ul>";
     return content.str();
 }
-void Request::setHeadr(std::string key, std::string value){
-    this->_headers[key] = value;
-}
-bool Request::findBestLocation(const std::string& requestPath, const ServerConfig& serverConfig) {
+bool                                Request::findBestLocation(const std::string& requestPath, const ServerConfig& serverConfig) {
     size_t longestMatchLength = 0;
 
     for (size_t i = 0; i < serverConfig.locations.size(); ++i) {
@@ -166,8 +122,7 @@ bool Request::findBestLocation(const std::string& requestPath, const ServerConfi
         return false;
     } 
 }
-
-void Request::getFullPath(const std::string &urlPath, LocationConfig &locationConfig)
+void                                Request::getFullPath(const std::string &urlPath, LocationConfig &locationConfig)
 {
     std::string cleanRoot = locationConfig.root;
     if (cleanRoot.size() > 1 && cleanRoot[cleanRoot.size() - 1] == '/')
@@ -186,7 +141,27 @@ void Request::getFullPath(const std::string &urlPath, LocationConfig &locationCo
         this->_path += "/" + relative;
 }
 
-std::string Request::ExtractBoundry(const std::string& str){
+/// //// FROM URL DEC PARSSING
+std::map<std::string, std::string>  Request::FormUrlDec(const std::string& body) {
+    std::map<std::string, std::string> full;
+    std::istringstream _body(body);
+    std::string l;
+
+    while (std::getline(_body, l, '&')) {
+        size_t pos = l.find('=');
+        if (pos == std::string::npos){
+            full.clear();
+            return (full);
+        }
+        std::string key = Library::DecodeUrl(l.substr(0, pos));
+        std::string value = Library::DecodeUrl(l.substr(pos + 1));
+        full[key] = value;
+    }
+    return full;
+}
+
+/// //// BOUNDRY PARSSING 
+std::string                         Request::ExtractBoundry(const std::string& str){
     size_t pos = str.find("boundary=");
     if (pos == std::string::npos)
         return "";
@@ -199,8 +174,7 @@ std::string Request::ExtractBoundry(const std::string& str){
     }
     return boundary;
 }
-
-FormPart Request::BoundryBody(const std::string& part) {
+FormPart                            Request::BoundryBody(const std::string& part) {
 	FormPart rzlt;
 
 	size_t headerEnd = part.find("\r\n\r\n");
@@ -250,8 +224,7 @@ FormPart Request::BoundryBody(const std::string& part) {
 	rzlt.content = body;
 	return rzlt;
 }
-
-std::vector<FormPart> Request::MultipartBody(const std::string& body, const std::string& conType){
+std::vector<FormPart>               Request::MultipartBody(const std::string& body, const std::string& conType){
     std::vector<std::string> all;
     std::string b = ExtractBoundry(conType);
     std::string del = "--" + b;

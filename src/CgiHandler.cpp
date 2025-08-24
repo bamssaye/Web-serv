@@ -1,19 +1,13 @@
 #include "../inc/CgiHandler.hpp"
 #include "../inc/Request.hpp"
 
-std::string to_string(size_t n) {
-    std::stringstream ss;
-    ss << n;
-    return ss.str();
-}
-
-CgiHandler::CgiHandler(Request& request)
-{
+// ///////
+CgiHandler::CgiHandler(Request& request){
     _initEnv(request);
 }
-
 CgiHandler::~CgiHandler() {}
 
+/// //////
 void CgiHandler::_initEnv(Request& request) {
     const std::map<std::string, std::string>& headers = request.getHeaders();
 
@@ -25,7 +19,7 @@ void CgiHandler::_initEnv(Request& request) {
     _env["SCRIPT_NAME"] = request.getPath();
     _env["SCRIPT_FILENAME"] = request.getPath();
     _env["REQUEST_METHOD"] = request.getMethod();
-    _env["CONTENT_LENGTH"] = to_string(request.getBody().length());
+    _env["CONTENT_LENGTH"] = request.getHeadr("Content-Length");
     _env["CONTENT_TYPE"] = headers.count("Content-Type") ? headers.at("Content-Type") : "";
     _env["PATH_INFO"] = request.getPath();
     _env["PATH_TRANSLATED"] = request.getPath();
@@ -215,7 +209,7 @@ std::string parseCgiOutput(const std::string& rawOutput, Request& request) {
     }
     if (!cookie.empty())
         valid_output += cookie;
-    valid_output += "Content-Length: " + to_string(bodyPart.size()) + "\r\n\r\n";
+    valid_output += "Content-Length: " + _toString(bodyPart.size()) + "\r\n\r\n";
     valid_output += bodyPart;
 
     return valid_output;

@@ -168,7 +168,7 @@ void Parser::parseServerDirective(const std::vector<std::string>& tokens, size_t
             else
                 host_addr = custom_inet_addr(host_str_val);
             std::string portStr = val.substr(colon + 1);
-            // validatePort(portStr);
+            validatePort(portStr);
             port_num = static_cast<unsigned short>(std::atoi(portStr.c_str()));
         } else {
             host_str_val = val;
@@ -433,6 +433,7 @@ void Parser::validateListenDirectives(const std::vector<std::pair<unsigned long,
     }
 
     if (wildcard_ports.empty()) {
+        throw std::runtime_error("at lest one lisnting");
         return; 
     }
 
