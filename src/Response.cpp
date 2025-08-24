@@ -82,6 +82,7 @@ std::map<int, std::string> Response::_CodeMessage(){
     status[501] = "Not Implemented";
     status[502] = "Bad Gateway";
     status[503] = "Service Unavailable";
+    status[504] = "Gateway Timeout";
     return status;
 }
 std::string Response::_MimeTypes(const std::string &Url){

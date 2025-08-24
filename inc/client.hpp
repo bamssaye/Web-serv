@@ -1,6 +1,7 @@
 #pragma once
 
 #include "webserv.h"
+// #include "CgiHandler.hpp"
 class Request;
 class Response;
 
@@ -25,6 +26,17 @@ public:
     //
     bool            requCheck;
     bool            requCheckcomp;
+    pid_t           cgi_pid;
+    std::string     cgi_output;
+    int             saveStdin;
+    int             saveStdout;
+    int             fdIn;
+    int             fdOut;
+    FILE*           fIn;
+    FILE*           fOut;
+    std::time_t       startTime;
+    bool            cgi_running;
+
 
 
     ServerConfig    server;
@@ -34,6 +46,9 @@ public:
     bool            getsendingFile();
     std::string     &getrequBuf() {return _requBuf;};
     int             getID();
+    void            setResponse(const std::string& res);
+    std::string     getrequfilename();
+
     //
     void            addBuffer(char *buf, ssize_t byRead);
     void            clearRequs();
@@ -56,4 +71,8 @@ public:
     size_t getContentLength(){ return _contentLength;};
     void readlargeFileRequest(const char *buf, ssize_t byRead);
     void genefilename();
+
+    void close_cgi();
+    void get_cgi_response(int fd, std::string& output);
+
 };

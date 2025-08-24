@@ -1,5 +1,7 @@
 #include "../inc/server.hpp"
-
+#include "../inc/Request.hpp"
+#include "../inc/Response.hpp"
+#include "../inc/CgiHandler.hpp"
 
 Server::Server (ServerConfig& servers) : InfoSocket(), _cliCount(0), _oP(1), _server(servers){
     this->initServer();
@@ -101,9 +103,9 @@ void Server::_ReadContent(char *buf, ssize_t byRead, int cliFd){
     
     if (_Clients[cliFd]->getRequHeaderCheck()){
         size_t len = _Clients[cliFd]->getContentLength();
-        if (len > MAX_SIZE){
+        if (len < MAX_SIZE){
             _Clients[cliFd]->readlargeFileRequest(buf, byRead);
-            _Clients[cliFd]->addBuffer(buf, byRead);
+            _Clients[cliFd]->addBuffer(buf, byRead);// 3lach kat3mr f string
         }
         else{
             _Clients[cliFd]->addBuffer(buf, byRead);
@@ -205,13 +207,35 @@ void Server::_closeCon(int FdClient){
 }
 void Server::checkTimeouts() {
     std::map<int, Client*>::iterator it = _Clients.begin();
-    if (it != _Clients.end()) {
-        if (it->second->timeOut()) {
-            int fd = it->first;
-            ++it;
-            _closeCon(fd);
-        }
-        else{
+    while (it != _Clients.end()) {
+        bool should_close = false;
+        
+       if (it->second->cgi_running){
+
+            if (waitpid(it->second->cgi_pid, NULL, WNOHANG) > 0) {
+                Request req;
+                it->second->get_cgi_response(it->second->fdOut, it->second->cgi_output);
+                it->second->close_cgi();
+                it->second->cgi_running = false;
+                it->second->cgi_pid = -1;
+                it->second->setResponse(parseCgiOutput(it->second->cgi_output, req));
+            }
+            else if (std::difftime(std::time(NULL), it->second->startTime) > 10) {
+            Response res;
+                kill(it->second->cgi_pid, SIGKILL);
+                it->second->close_cgi();
+                it->second->cgi_running = false;
+                it->second->cgi_pid = -1;
+                it->second->setResponse(res.ErrorResponse(504, this->_server.error_pages));
+            }
+            _writeEvent(this->_epollFd, it->first);
+    }
+
+        if (should_close) {
+            int fd_to_close = it->first;
+            _closeCon(fd_to_close);
+            it = _Clients.begin();
+        } else {
             ++it;
         }
     }

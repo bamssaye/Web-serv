@@ -18,6 +18,7 @@ class Request{
     void                                _parseHeaderFields(std::istringstream& RqHeaders);
 public:
 	Request(std::string& reqMsg);
+    Request();
 	~Request();
     //
     std::map<std::string, std::string>  getHeaders();//{return this->_headers;}

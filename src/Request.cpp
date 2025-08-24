@@ -15,6 +15,7 @@ Request::Request(std::string& reqMsg):_boday(""),_isvalid(false), _contentLength
 
 }
 Request::~Request(){}
+Request::Request():_boday(""),_isvalid(false), _contentLength(-1){}
 bool isHexChar(char c){
     return (std::isxdigit(static_cast<unsigned char>(c)));
 }

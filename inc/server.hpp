@@ -3,6 +3,8 @@
 #include "webserv.h"
 #include "Parser.hpp"
 #include "client.hpp"
+#include "Request.hpp"
+#include "Response.hpp"
 //////////////////////
 
 class InfoSocket{

@@ -23,7 +23,16 @@ long long fileSize(std::string filePath){
     return size;
 }
 ///
-Client::Client():_bySent(0),_lastActive(0), _sendingFile(false), requCheck(false){}
+Client::Client():_bySent(0),_lastActive(0), _sendingFile(false), requCheck(false){
+    this->cgi_pid = -1;
+    this->cgi_output = "";
+    this->saveStdin = -1;
+    this->saveStdout = -1;
+    this->fdIn = -1;
+    this->fdOut = -1;
+    this->startTime = 0;
+    this->cgi_running = false;
+}
 void Client::genefilename(){
     std::ostringstream bu;
     bu << "tmp/";
@@ -34,6 +43,14 @@ void Client::genefilename(){
 Client::Client(ServerConfig& se, int cli_id):_cliId(cli_id), _bySent(0) , _sendingFile(false), requCheck(false){
     this->_lastActive = time(NULL);
     this->server = se;
+    this->cgi_pid = -1;
+    this->cgi_output = "";
+    this->saveStdin = -1;
+    this->saveStdout = -1;
+    this->fdIn = -1;
+    this->fdOut = -1;
+    this->startTime = 0;
+    this->cgi_running = false;
     this->_contentLength = 0;
     this->requCheckcomp = false;
     genefilename();
@@ -53,6 +70,11 @@ bool Client::getsendingFile(){return _sendingFile;}
 int Client::getID(){return _cliId;}
 void Client::dataSent(ssize_t bySent) { _bySent += bySent; _lastActive = time(NULL);}
 bool Client::timeOut() { return (time(NULL) - _lastActive) > 10; }
+void Client::setResponse(const std::string& res) {
+    this->_respoBuf = res;
+    this->_bySent = 0;
+}
+std::string Client::getrequfilename(){ return this->_requfilename;}
 /// //////////
 bool Client::getRequHeaderCheck(){
     this->_lastActive = time(NULL);
@@ -79,12 +101,8 @@ bool Client::getRequHeaderCheck(){
 void Client::readlargeFileRequest(const char *buf, ssize_t byRead){
     this->_lastActive = time(NULL);
     if (!this->__readBuffer.is_open()) {
-        std::ostringstream res;
-	    res << "HTTP/1.1 " << "500" << " " << "EROOR"<< "\r\n";
-	    res << "Content-Type: " << "text/html" << "\r\n";
-	    res << "Connection: close\r\n\r\n";
-        res << "HELLO";
-        this->_respoBuf = res.str();
+        Response res;
+        this->_respoBuf = res.ErrorResponse(500, this->server.error_pages);
         this->_sendingFile = false;
         return;
     }
@@ -245,7 +263,6 @@ void Client::GetMethod(Request& req, Response& res){
 
 void Client::PostMethod(Request& req, Response& res){
     struct stat st;
-    // std::cerr << "req.getQuery()" << std::endl;
     if (stat(req.loc_config.upload_path.c_str(), &st) < 0){
         this->_respoBuf =  res.ErrorResponse(404, this->server.error_pages); return;
     }
@@ -336,12 +353,34 @@ void Client::DeleteMethod(Request& req, Response& res) {
 /// /////// CGI FUN
 
 void Client::Cgi_call(Request& rq, Response& res){
-    // std::cerr << rq.getBody() << std::endl;
     CgiHandler cgi(rq);
-    std::string output = cgi.executeCgi(rq);
-    if (output.empty() || output == "Status: 500\r\n\r\n")
+    if (!cgi.executeCgi(rq, *this)) {
         this->_respoBuf = res.ErrorResponse(500, this->server.error_pages);
-    this->_respoBuf = parseCgiOutput(output, rq);
-    if (this->_respoBuf.empty())
-        this->_respoBuf = res.ErrorResponse(500, this->server.error_pages);
+        this->cgi_running = false;
+        return;
+    }
 }
+
+
+void Client::get_cgi_response(int fd, std::string& output) {
+    lseek(fd, 0, SEEK_SET);
+    char buffer[CGI_BUFSIZE];
+    int bytes;
+    while ((bytes = read(fd, buffer, CGI_BUFSIZE - 1)) > 0) {
+        buffer[bytes] = '\0';
+        output += buffer;
+    }
+    return ;
+}
+
+void Client::close_cgi() {
+    dup2(saveStdin, STDIN_FILENO);
+    dup2(saveStdout, STDOUT_FILENO);
+    fclose(fIn);
+    fclose(fOut);
+    close(saveStdin);
+    close(saveStdout);
+}
+
+
+

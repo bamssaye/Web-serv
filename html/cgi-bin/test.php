@@ -19,6 +19,9 @@
 </head>
 <body>
 
+
+
+
 <div class="container">
     <h1>CGI File Upload Test</h1>
     <p>Select a file to upload to the server.</p>

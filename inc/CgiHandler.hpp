@@ -12,7 +12,7 @@ public:
     CgiHandler(Request& request);
     ~CgiHandler();
 
-    std::string executeCgi(Request& request);
+    bool executeCgi(Request& request, Client& client);
 
     std::map<std::string, std::string> _env;
 

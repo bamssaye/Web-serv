@@ -64,14 +64,21 @@ char **CgiHandler::_getEnvAsCstrArray() const {
     return env;
 }
 
-std::string CgiHandler::executeCgi(Request& request) {
-    pid_t pid;
-    int saveStdin = dup(STDIN_FILENO);
-    int saveStdout = dup(STDOUT_FILENO);
-    FILE *fIn = tmpfile();
-    FILE *fOut = tmpfile();
-    int fdIn = fileno(fIn);
-    int fdOut = fileno(fOut);
+bool CgiHandler::executeCgi(Request& request, Client& client) {
+    client.saveStdin = dup(STDIN_FILENO);
+    client.saveStdout = dup(STDOUT_FILENO);
+    client.fIn = tmpfile();
+    if (!client.fIn) {
+        perror("tmpfile for fIn failed");
+        return false;
+    }
+    client.fOut = tmpfile();
+    if (!client.fOut) {
+        perror("tmpfile for fOut failed");
+        fclose(client.fIn);
+        return false;
+    }    client.fdIn = fileno(client.fIn);
+    client.fdOut = fileno(client.fOut);
     std::string output;
     char **env;
 
@@ -79,20 +86,36 @@ std::string CgiHandler::executeCgi(Request& request) {
         env = _getEnvAsCstrArray();
     } catch (...) {
         std::cerr << "Environment allocation failed." << std::endl;
-        return "Status: 500\r\n\r\n";
+        return false;
     }
 
+    if (client.getContentLength() > MAX_SIZE){
+        std::string file = client.getrequfilename();
+        int fd = open(file.c_str(), O_RDWR);
+        if (fd == -1) {
+            std::cerr << "Failed to open temporary file for large request body." << std::endl;
+            for (size_t i = 0; env[i]; i++)
+                delete[] env[i];
+            delete[] env;
+            return false;
+        }
 
-    write(fdIn, request.getBody().c_str(), request.getBody().size());
-    lseek(fdIn, 0, SEEK_SET);
-
-    pid = fork();
-    if (pid == -1) {
+        dup2(fd, client.fdIn);
+        close(fd);
+        }
+    else
+        write(client.fdIn, request.getBody().c_str(), request.getBody().size());        
+    lseek(client.fdIn, 0, SEEK_SET);
+    
+    client.cgi_pid = fork();
+    client.startTime = std::time(NULL);
+    client.cgi_running = true;
+    if (client.cgi_pid == -1) {
         std::cerr << "Fork failed." << std::endl;
-        return "Status: 500\r\n\r\n";
-    } else if (pid == 0) {
-        dup2(fdIn, STDIN_FILENO);
-        dup2(fdOut, STDOUT_FILENO);
+        return false;
+    } else if (client.cgi_pid == 0) {
+        dup2(client.fdIn, STDIN_FILENO);
+        dup2(client.fdOut, STDOUT_FILENO);
         std::string cgi_path = request.getCgipass();
         if (cgi_path.empty()) {
             std::cerr << "CGI path       is empty." << std::endl;
@@ -110,30 +133,31 @@ std::string CgiHandler::executeCgi(Request& request) {
         write(STDOUT_FILENO, "Status: 500\r\n\r\n", 16);
         exit(1);
     } else {
-        waitpid(pid, NULL, 0);
-        lseek(fdOut, 0, SEEK_SET);
-        char buffer[CGI_BUFSIZE];
-        int bytes;
-
-        while ((bytes = read(fdOut, buffer, CGI_BUFSIZE - 1)) > 0) {
-            buffer[bytes] = '\0';
-            output += buffer;
-        }
+        waitpid(client.cgi_pid, NULL, WNOHANG);
+        
     }
-
-    dup2(saveStdin, STDIN_FILENO);
-    dup2(saveStdout, STDOUT_FILENO);
-    fclose(fIn);
-    fclose(fOut);
-    close(saveStdin);
-    close(saveStdout);
+    
+    // std::cerr << "CGI process started with client.cgi_pid: " << std::endl;
+    // lseek(client.fdOut, 0, SEEK_SET);
+    // char buffer[CGI_BUFSIZE];
+    // int bytes;
+    // while ((bytes = read(client.fdOut, buffer, CGI_BUFSIZE - 1)) > 0) {
+    //     buffer[bytes] = '\0';
+    //     output += buffer;
+    // }
+    // dup2(client.saveStdin, STDIN_FILENO);
+    // dup2(client.saveStdout, STDOUT_FILENO);
+    // fclose(fIn);
+    // fclose(fOut);
+    // close(client.saveStdin);
+    // close(client.saveStdout);
 
     for (size_t i = 0; env[i]; i++)
         delete[] env[i];
     delete[] env;
 
 
-    return output;
+    return true;
 }
 
 
@@ -193,17 +217,22 @@ std::string parseCgiOutput(const std::string& rawOutput, Request& request) {
         if (key == "Status") {
             status = value;
 
-        } else {
-            request.setHeadr(key, value);
-            if (key == "Set-Cookie") {
+        }
+        if (key == "Set-Cookie") {
                 cookie  += key + ": " + value + "\r\n";
             }
-        }
+        else
+            request.setHeadr(key, value);
 
     }
     valid_output  = "HTTP/1.0 " + status + "\r\n";
-    valid_output += "Content-type: " + request.getHeadr("Content-type") + "\r\n";
-    valid_output += cookie + "Content-Length: " + to_string(bodyPart.size()) + "\r\n\r\n";
+    std::map<std::string, std::string> headers = request.getHeaders();
+    for(std::map<std::string, std::string>::iterator it = headers.begin(); it != headers.end(); ++it) {
+        valid_output += it->first + ": " + it->second + "\r\n";
+    }
+    if (!cookie.empty())
+        valid_output += cookie;
+    valid_output += "Content-Length: " + to_string(bodyPart.size()) + "\r\n\r\n";
     valid_output += bodyPart;
 
     return valid_output;
