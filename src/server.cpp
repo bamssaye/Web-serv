@@ -103,9 +103,9 @@ void Server::_ReadContent(char *buf, ssize_t byRead, int cliFd){
     
     if (_Clients[cliFd]->getRequHeaderCheck()){
         size_t len = _Clients[cliFd]->getContentLength();
-        if (len < MAX_SIZE){
+        if (len > MAX_SIZE){
             _Clients[cliFd]->readlargeFileRequest(buf, byRead);
-            _Clients[cliFd]->addBuffer(buf, byRead);// 3lach kat3mr f string
+            // _Clients[cliFd]->addBuffer(buf, byRead);// 3lach kat3mr f string
         }
         else{
             _Clients[cliFd]->addBuffer(buf, byRead);

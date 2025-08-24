@@ -107,15 +107,15 @@ void Client::readlargeFileRequest(const char *buf, ssize_t byRead){
         return;
     }
     __readBuffer.write(buf, byRead);
-    // if (this->requCheck && !this->requCheckcomp) {
-    //     size_t headerEnd = this->_requBuf.find("\r\n\r\n");
-    //     if (headerEnd != std::string::npos) {
-    //         size_t bodySize = fileSize(this->_requfilename)  + headerEnd + 4;
-    //         if (bodySize  >= this->_contentLength) {
-    //             this->requCheckcomp = true;
-    //         }
-    //     }
-    // }
+    if (this->requCheck && !this->requCheckcomp) {
+        size_t headerEnd = this->_requBuf.find("\r\n\r\n");
+        if (headerEnd != std::string::npos) {
+            size_t bodySize = fileSize(this->_requfilename)  + headerEnd + 4;
+            if (bodySize  >= this->_contentLength) {
+                this->requCheckcomp = true;
+            }
+        }
+    }
 }
 
 void Client::addBuffer(char *buf, ssize_t byRead){
@@ -230,7 +230,8 @@ void Client::GetMethod(Request& req, Response& res){
     }
 
     if(S_ISDIR(st.st_mode)){
-        std::string in = req.getPath() + "/index.html";
+        std::string in = req.getPath() + req.loc_config.index;//"/index.html";
+        std::cerr << in << std::endl;
         if (!stat(in.c_str(), &st) && S_ISREG(st.st_mode)){
             this->_respoBuf = res.getResponse(in);
         }

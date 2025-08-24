@@ -99,7 +99,6 @@ bool CgiHandler::executeCgi(Request& request, Client& client) {
             delete[] env;
             return false;
         }
-
         dup2(fd, client.fdIn);
         close(fd);
         }
@@ -136,23 +135,7 @@ bool CgiHandler::executeCgi(Request& request, Client& client) {
         waitpid(client.cgi_pid, NULL, WNOHANG);
         
     }
-    
-    // std::cerr << "CGI process started with client.cgi_pid: " << std::endl;
-    // lseek(client.fdOut, 0, SEEK_SET);
-    // char buffer[CGI_BUFSIZE];
-    // int bytes;
-    // while ((bytes = read(client.fdOut, buffer, CGI_BUFSIZE - 1)) > 0) {
-    //     buffer[bytes] = '\0';
-    //     output += buffer;
-    // }
-    // dup2(client.saveStdin, STDIN_FILENO);
-    // dup2(client.saveStdout, STDOUT_FILENO);
-    // fclose(fIn);
-    // fclose(fOut);
-    // close(client.saveStdin);
-    // close(client.saveStdout);
-
-    for (size_t i = 0; env[i]; i++)
+        for (size_t i = 0; env[i]; i++)
         delete[] env[i];
     delete[] env;
 
