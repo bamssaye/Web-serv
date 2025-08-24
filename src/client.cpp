@@ -230,7 +230,7 @@ void Client::GetMethod(Request& req, Response& res){
     }
 
     if(S_ISDIR(st.st_mode)){
-        std::string in = req.getPath() + req.loc_config.index;//"/index.html";
+        std::string in = req.getPath() + "/" + req.loc_config.index;//"/index.html";
         std::cerr << in << std::endl;
         if (!stat(in.c_str(), &st) && S_ISREG(st.st_mode)){
             this->_respoBuf = res.getResponse(in);

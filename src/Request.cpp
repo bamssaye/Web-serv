@@ -133,7 +133,6 @@ std::string Request::getDirContent(){
         if (name == ".") continue;
         if (entry->d_type == DT_DIR)
             name += "/";
-        std::cerr << content.str() << std::endl;
         content << "<li><a href=\"";
         content << _uriPath;
         if (_path.length() == 0 || _uriPath[_uriPath.length() - 1] != '/')
