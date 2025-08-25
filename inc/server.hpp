@@ -33,6 +33,7 @@ class Server : public InfoSocket {
 	std::map <int, Client*>		_Clients;
 	int							_cliCount;
 	epoll_event					_events[MAX_EVENTS];
+	std::map <int, InfoSocket*>	_sockets;
 	int 						_epollFd;
 	int							_oP;
 	ServerConfig				_server;

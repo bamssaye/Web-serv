@@ -23,11 +23,15 @@ sockaddr_in& InfoSocket::getSockaddr(){ return addr; }
 /// /////
 Server::Server (ServerConfig& servers) : InfoSocket(), _cliCount(0), _oP(1), _server(servers){
     this->initServer();
+    // this->_sockets = new _server.listen.size()
 }
 Server::~Server(){
     for (std::map<int, Client*>::iterator it = _Clients.begin(); it != _Clients.end(); ++it)
         delete it->second;
     _Clients.clear();
+    for (std::map<int, InfoSocket*>::iterator it = _sockets.begin(); it != _sockets.end(); ++it)
+        delete it->second;
+    _sockets.clear();
 }
 
 /// ///// Set && Run Server
@@ -51,24 +55,22 @@ void Server::initServer(){
     std::vector<std::pair<unsigned long, unsigned short> >::iterator it = _server.listen.begin();
     while (it != _server.listen.end()){
         unsigned long host = it->first ; int port = it->second; int i = 0;
-        int serveSize = _server.listen.size();
-        InfoSocket sockets[serveSize];
-        int fd = socket(AF_INET, SOCK_STREAM, 0);
+        int fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
         if (fd < 0)
             throw std::runtime_error("socket failed");
         this->_listfd.push_back(fd);
-        sockets[i].setSocket(fd, port, host, AF_INET);
-        if (this->_setNonBlocking(fd) == -1)
-            throw std::runtime_error("setNonBlocking failed");
+        _sockets[i] = new InfoSocket();
+        _sockets[i]->setSocket(fd, port, host, AF_INET);
         if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &this->_oP, sizeof(this->_oP)) < 0)
             throw std::runtime_error("setsockopt failed");
-        if (bind(fd, (sockaddr *)&sockets[i].getSockaddr(), sockets[i].getsocklen()) < 0)
+        if (bind(fd, (sockaddr *)&_sockets[i]->getSockaddr(), _sockets[i]->getsocklen()) < 0)
             throw std::runtime_error("bind failed");
         if (listen(fd, SOMAXCONN) < 0)
             throw std::runtime_error("listen failed");
-        if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, fd, &sockets[i++].getSockEvent()) == -1)
+        if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, fd, &_sockets[i]->getSockEvent()) == -1)
             throw std::runtime_error("epoll_ctl failed");
         ++it;
+        i++;
     }
     Library::printMsg("\n\t   Webserv/1.0\n\tServer initialized.");
 }
@@ -197,11 +199,6 @@ void Server::_AcceptCon(int eventFD){
 			std::string msg = "Accept failed: ";
 			Library::printMsgErr(_toString(msg + strerror(errno)));
 			break;
-		}
-		if (_setNonBlocking(cliFd) == -1){
-			Library::printMsgErr("Client socket Failed to set non-blocking.");
-			close(cliFd);
-			continue;
 		}
 		epoll_event cliEvent;
 		cliEvent.data.fd = cliFd;
