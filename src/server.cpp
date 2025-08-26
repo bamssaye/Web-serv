@@ -3,27 +3,10 @@
 #include "../inc/Response.hpp"
 #include "../inc/CgiHandler.hpp"
 #include "../inc/Library.hpp"
-
 /// /////
 
-InfoSocket::InfoSocket():_fd(-1), port(0), ip(0){
-    memset(&this->addr, 0, sizeof(this->addr));
-    memset(&this->sock_event, 0, sizeof(this->sock_event));
-}
-InfoSocket::~InfoSocket(){}
-
-
-int InfoSocket::getFd() const{return _fd;}
-int InfoSocket::setFd(int fd){ this->_fd = fd; return this->_fd < 0;}
-epoll_event& InfoSocket::getSockEvent(){ return sock_event;};
-socklen_t& InfoSocket::getsocklen(){ return addr_len; }
-sockaddr_in& InfoSocket::getSockaddr(){ return addr; }
-
-
-/// /////
-Server::Server (ServerConfig& servers) : InfoSocket(), _cliCount(0), _oP(1), _server(servers){
+Server::Server (ServerConfig& servers) : _cliCount(0), _oP(1), _server(servers){
     this->initServer();
-    // this->_sockets = new _server.listen.size()
 }
 Server::~Server(){
     for (std::map<int, Client*>::iterator it = _Clients.begin(); it != _Clients.end(); ++it)
@@ -35,20 +18,7 @@ Server::~Server(){
 }
 
 /// ///// Set && Run Server
-void InfoSocket::setSocket(int fd, uint16_t port, uint32_t ip, int ipVersion){
-	
-	this->_fd = fd;
-    this->port = port;
-    this->ip = ip;
-    this->addr_len = sizeof(sockaddr_in);
 
-	this->addr.sin_family = ipVersion;
-    this->addr.sin_port = htons(this->port);
-    this->addr.sin_addr.s_addr = htonl(this->ip);
-
-	this->sock_event.events = EPOLLIN;
-    this->sock_event.data.fd = this->_fd;
-}
 void Server::initServer(){
     if((this->_epollFd = epoll_create1(EPOLL_CLOEXEC)) == -1){
         throw std::runtime_error("epoll_create1 failed");}
@@ -100,7 +70,7 @@ void Server::_handleEvent(const epoll_event& ev){
         return;
     }
     if (_isNewClient(ev_fd)){
-        if (ev.events & EPOLLIN){ 
+        if (ev.events & EPOLLIN){    
             _AcceptCon(ev_fd); 
         }
     }
@@ -148,6 +118,33 @@ void Server::_ReadContent(char *buf, ssize_t byRead, int cliFd){
         } 
     }
 }
+/// /// Accepte New Connection {New Client}
+void Server::_AcceptCon(int eventFD){
+	sockaddr_in cliAdd;
+	socklen_t cliAddLen = sizeof(cliAdd);
+
+	while (true){
+		int cliFd = accept(eventFD, (sockaddr*)&cliAdd, &cliAddLen);
+		if (cliFd == -1){
+			if (errno == EAGAIN || errno == EWOULDBLOCK){
+                break;}
+			std::string msg = "Accept failed: ";
+			Library::printMsgErr(_toString(msg + strerror(errno)));
+			break;
+		}
+		epoll_event cliEvent;
+		cliEvent.data.fd = cliFd;
+		cliEvent.events = EPOLLIN;
+		if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, cliFd, &cliEvent) == -1){
+			Library::printMsgErr("Error: epoll_ctl ADD new client failed");
+			close(cliFd);
+			continue;
+		}
+        _cliCount++;
+		_Clients[cliFd] = new Client(_server ,_cliCount);
+        Library::printMsg("Client ID=[" + _toString(_cliCount) + "] Connected");
+	}
+}
 void Server::_ClientRead(int cliFd){
     char buffer[BUFFER_SIZE];
     ssize_t bytes;
@@ -155,7 +152,10 @@ void Server::_ClientRead(int cliFd){
     if (_Clients.find(cliFd) == _Clients.end())
         return;
     bytes = recv(cliFd, buffer, BUFFER_SIZE, 0);
-    if (bytes < 0) {this->_closeCon(cliFd);  return;}
+    if (bytes == -1) {
+        this->_closeCon(cliFd);
+        return;
+    }
     _ReadContent(buffer, bytes, cliFd);
     if (_Clients[cliFd]->requCheck && _Clients[cliFd]->requCheckcomp){
             _Clients[cliFd]->HttpRequest();
@@ -187,32 +187,7 @@ void Server::_ClientWrite(int cliFd){
     }
 }
 
-/// /// Accepte New Connection {New Client}
-void Server::_AcceptCon(int eventFD){
-	sockaddr_in cliAdd;
-	socklen_t cliAddLen = sizeof(cliAdd);
 
-	while (true){
-		int cliFd = accept(eventFD, (sockaddr*)&cliAdd, &cliAddLen);
-		if (cliFd == -1){
-			if (errno == EAGAIN || errno == EWOULDBLOCK){break;}
-			std::string msg = "Accept failed: ";
-			Library::printMsgErr(_toString(msg + strerror(errno)));
-			break;
-		}
-		epoll_event cliEvent;
-		cliEvent.data.fd = cliFd;
-		cliEvent.events = EPOLLIN;
-		if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, cliFd, &cliEvent) == -1){
-			Library::printMsgErr("Error: epoll_ctl ADD new client failed");
-			close(cliFd);
-			continue;
-		}
-        _cliCount++;
-		_Clients[cliFd] = new Client(_server ,_cliCount);
-        Library::printMsg("Client ID=[" + _toString(_cliCount) + "] Connected");
-	}
-}
 
 /// /// CLose Connection {Remove Client}
 void Server::_closeCon(int FdClient){
@@ -227,15 +202,6 @@ void Server::_closeCon(int FdClient){
        _Clients.erase(it);
        Library::printMsg("Connection closed ID=[" + _toString(id) + "]");
     }
-    
-}
-
-// ///// check access Mode && Set Non Blocking
-int Server::_setNonBlocking(int fd){
-    int f = fcntl(fd, F_GETFL, 0);
-    if (f == -1)
-        return -1;
-    return fcntl(fd, F_SETFL, f | O_NONBLOCK);
 }
 
 /// ///

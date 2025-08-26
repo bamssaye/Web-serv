@@ -5,30 +5,12 @@
 #include "client.hpp"
 #include "Request.hpp"
 #include "Response.hpp"
+#include "InfoSocket.hpp"
 //////////////////////
 
-class InfoSocket{
-protected:
-	int				_fd;
-	sockaddr_in		addr;
-	socklen_t		addr_len;
-	epoll_event		sock_event;
-	uint16_t		port;
-	uint32_t		ip;
-public:
-	InfoSocket();
-	~InfoSocket();
-	//
-	void			setSocket(int fd, uint16_t port, uint32_t ip, int ipVersion);
-	int 			setFd(int fd);
-	int 			getFd() const;
-	sockaddr_in&	getSockaddr();
-	socklen_t&		getsocklen();
-	epoll_event&	getSockEvent();
-};
-
+// class InfoSocket;
 ///////
-class Server : public InfoSocket {
+class Server {
 
 	std::map <int, Client*>		_Clients;
 	int							_cliCount;
@@ -38,7 +20,6 @@ class Server : public InfoSocket {
 	int							_oP;
 	ServerConfig				_server;
 	std::vector<int>			_listfd;
-	int							_setNonBlocking(int fd);
 	void						_Msg(std::string m);
 	void						_MsgErr(std::string m);
 	void						_handleEvent(const epoll_event& ev);
