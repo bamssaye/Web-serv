@@ -5,6 +5,11 @@
 #include "../inc/Library.hpp"
 /// /////
 
+int Server::getsig = 0;
+void handler(int i){
+    Server::getsig = i;
+}
+
 Server::Server (ServerConfig& servers) : _cliCount(0), _oP(1), _server(servers){
     this->initServer();
 }
@@ -12,9 +17,11 @@ Server::~Server(){
     for (std::map<int, Client*>::iterator it = _Clients.begin(); it != _Clients.end(); ++it)
         delete it->second;
     _Clients.clear();
-    for (std::map<int, InfoSocket*>::iterator it = _sockets.begin(); it != _sockets.end(); ++it)
+    for (std::map<int, InfoSocket*>::iterator it = _sockets.begin(); it != _sockets.end(); ++it){
         delete it->second;
+    }
     _sockets.clear();
+     
 }
 
 /// ///// Set && Run Server
@@ -23,8 +30,9 @@ void Server::initServer(){
     if((this->_epollFd = epoll_create1(EPOLL_CLOEXEC)) == -1){
         throw std::runtime_error("epoll_create1 failed");}
     std::vector<std::pair<unsigned long, unsigned short> >::iterator it = _server.listen.begin();
+    int i = 0;
     while (it != _server.listen.end()){
-        unsigned long host = it->first ; int port = it->second; int i = 0;
+        unsigned long host = it->first ; int port = it->second; 
         int fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
         if (fd < 0)
             throw std::runtime_error("socket failed");
@@ -37,16 +45,17 @@ void Server::initServer(){
             throw std::runtime_error("bind failed");
         if (listen(fd, SOMAXCONN) < 0)
             throw std::runtime_error("listen failed");
-        if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, fd, &_sockets[i]->getSockEvent()) == -1)
+        if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, fd, &_sockets[i++]->getSockEvent()) == -1)
             throw std::runtime_error("epoll_ctl failed");
         ++it;
-        i++;
     }
     Library::printMsg("\n\t   Webserv/1.0\n\tServer initialized.");
 }
+
 void Server::runServer(){
     Library::printMsg("\tServer listening.\n\t" + std::string(20,'='));
-    while(true){
+    while(!getsig){
+       signal(SIGINT, handler);
        int nFds = epoll_wait(_epollFd, _events, MAX_EVENTS, -1);
        if (nFds == -1){
             if (errno == EINTR)

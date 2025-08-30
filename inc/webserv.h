@@ -34,7 +34,7 @@
 #include <errno.h>
 #include <ctime>
 #include <limits>
-
+#include <signal.h>
 
 #define MAX_EVENTS  10 // MAX event 
 #define BUFFER_SIZE 8192 // 8kb

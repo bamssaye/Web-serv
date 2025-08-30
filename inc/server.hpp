@@ -41,6 +41,7 @@ public:
 	void checkTimeouts();
 	void 						initServer();
 	void 						runServer();
-	std::vector<int> 			getListFd;		
+	std::vector<int> 			getListFd;
+	static int					getsig;
 };
 
