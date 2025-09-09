@@ -217,7 +217,6 @@ void Server::_closeCon(int FdClient){
 void Server::checkTimeouts() {
     std::map<int, Client*>::iterator it = _Clients.begin();
     while (it != _Clients.end()){
-        bool should_close = false;
         if (it->second->cgi_running){
             if (waitpid(it->second->cgi_pid, NULL, WNOHANG) > 0){
                 Request req;
@@ -237,7 +236,7 @@ void Server::checkTimeouts() {
             }
             _writeEvent(this->_epollFd, it->first);
         }
-        if (should_close){
+        if (it->second->timeOut()) {
             int fd_to_close = it->first;
             _closeCon(fd_to_close);
             it = _Clients.begin();

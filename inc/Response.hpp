@@ -5,7 +5,7 @@
 class Response{
     std::map<int, std::string>          _cMessage;
     std::map<int, std::string>          _CodeMessage();
-    std::string                         _MimeTypes(const std::string &Url);
+    
     
 public:
     Response();
@@ -21,8 +21,8 @@ public:
     std::string                         getHeaderResponse(std::string Mimetype, int size, int code);
     std::string                         getRedirectResponse(const std::string& newUrl, int code);
     std::string                         Connectionstatus(std::string con);
-    
-    
+    // std::string                         getTypes(const std::string &Url);
+    std::string                         _MimeTypes(const std::string &Url);
 
     /// tooo
     // static long long                    fileSize(std::string filePath);

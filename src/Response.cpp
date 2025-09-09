@@ -85,46 +85,60 @@ std::map<int, std::string> Response::_CodeMessage(){
     status[504] = "Gateway Timeout";
     return status;
 }
+// std::string Response::getTypes(const std::string &Url){
+
+// }
+std::string findExtensionByMime(const std::map<std::string, std::string>& m, const std::string& mime) {
+    for (std::map<std::string, std::string>::const_iterator it = m.begin(); it != m.end(); ++it) {
+        if (it->second == mime) {
+            return it->first;
+        }
+    }
+    return "-1";
+}
 std::string Response::_MimeTypes(const std::string &Url){
     std::map<std::string, std::string> m;
-    m.insert(std::make_pair(".html", "text/html"));
-    m.insert(std::make_pair(".htm",  "text/html"));
-    m.insert(std::make_pair(".css",  "text/css"));
-    m.insert(std::make_pair(".js",   "application/javascript"));
-    m.insert(std::make_pair(".json", "application/json"));
-    m.insert(std::make_pair(".xml",  "application/xml"));
-    m.insert(std::make_pair(".txt",  "text/plain"));
-    m.insert(std::make_pair(".csv",  "text/csv"));
-    m.insert(std::make_pair(".png",  "image/png"));
-    m.insert(std::make_pair(".jpg",  "image/jpeg"));
-    m.insert(std::make_pair(".jpeg", "image/jpeg"));
-    m.insert(std::make_pair(".gif",  "image/gif"));
-    m.insert(std::make_pair(".bmp",  "image/bmp"));
-    m.insert(std::make_pair(".webp", "image/webp"));
-    m.insert(std::make_pair(".svg",  "image/svg+xml"));
-    m.insert(std::make_pair(".ico",  "image/x-icon"));
-    m.insert(std::make_pair(".woff",  "font/woff"));
-    m.insert(std::make_pair(".woff2", "font/woff2"));
-    m.insert(std::make_pair(".ttf",   "font/ttf"));
-    m.insert(std::make_pair(".otf",   "font/otf"));
-    m.insert(std::make_pair(".eot",   "application/vnd.ms-fontobject"));
-    m.insert(std::make_pair(".mp3", "audio/mpeg"));
-    m.insert(std::make_pair(".wav", "audio/wav"));
-    m.insert(std::make_pair(".ogg", "audio/ogg"));
-    m.insert(std::make_pair(".mp4",  "video/mp4"));
-    m.insert(std::make_pair(".webm", "video/webm"));
-    m.insert(std::make_pair(".ogv",  "video/ogg"));
-    m.insert(std::make_pair(".avi",  "video/x-msvideo"));
-    m.insert(std::make_pair(".mov",  "video/quicktime"));
-    m.insert(std::make_pair(".mkv",  "video/x-matroska"));
-    m.insert(std::make_pair(".zip", "application/zip"));
-    m.insert(std::make_pair(".tar", "application/x-tar"));
-    m.insert(std::make_pair(".gz",  "application/gzip"));
-    m.insert(std::make_pair(".bz2", "application/x-bzip2"));
-    m.insert(std::make_pair(".7z",  "application/x-7z-compressed"));
-    m.insert(std::make_pair(".rar", "application/vnd.rar"));
-    m.insert(std::make_pair("", "application/octet-stream"));
-
+    m[".html"] = "text/html";
+    m[".htm"]  = "text/html";
+    m[".css"]  = "text/css";
+    m[".js"]   = "application/javascript";
+    m[".json"] = "application/json";
+    m[".xml"]  = "application/xml";
+    m[".txt"]  = "text/plain";
+    m[".csv"]  = "text/csv";
+    m[".png"]  = "image/png";
+    m[".jpg"]  = "image/jpeg";
+    m[".jpeg"] = "image/jpeg";
+    m[".gif"]  = "image/gif";
+    m[".bmp"]  = "image/bmp";
+    m[".webp"] = "image/webp";
+    m[".svg"]  = "image/svg+xml";
+    m[".ico"]  = "image/x-icon";
+    m[".woff"]  = "font/woff";
+    m[".woff2"] = "font/woff2";
+    m[".ttf"]   = "font/ttf";
+    m[".otf"]   = "font/otf";
+    m[".eot"]   = "application/vnd.ms-fontobject";
+    m[".mp3"]   = "audio/mpeg";
+    m[".wav"]   = "audio/wav";
+    m[".ogg"]   = "audio/ogg";
+    m[".mp4"]   = "video/mp4";
+    m[".webm"]  = "video/webm";
+    m[".ogv"]   = "video/ogg";
+    m[".avi"]   = "video/x-msvideo";
+    m[".mov"]   = "video/quicktime";
+    m[".mkv"]   = "video/x-matroska";
+    m[".zip"]   = "application/zip";
+    m[".tar"]   = "application/x-tar";
+    m[".gz"]    = "application/gzip";
+    m[".bz2"]   = "application/x-bzip2";
+    m[".7z"]    = "application/x-7z-compressed";
+    m[".rar"]   = "application/vnd.rar"; 
+    m[""]       = "application/octet-stream";
+    
+    
+    if (!Url.empty() && Url.find(".") == std::string::npos)
+        return findExtensionByMime(m, Url);
     std::string::size_type dot = Url.find_last_of('.');
     if (dot == std::string::npos)
         return "application/octet-stream";

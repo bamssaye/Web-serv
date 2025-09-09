@@ -7,6 +7,7 @@ Request::Request(std::string& reqMsg):_boday(""),_isvalid(false), _contentLength
     std::istringstream ss(reqMsg);
     std::string reqLine;
     std::getline(ss, reqLine);
+    // std::cerr << "Request Line: " << reqLine << std::endl;
     this->_parseRequestLine(reqLine);
     this->_parseHeaderFields(ss);
     size_t pos_end = reqMsg.find("\r\n\r\n");
@@ -55,15 +56,21 @@ void                                Request::_parseRequestLine(std::string& RqLi
 void                                Request::_parseHeaderFields(std::istringstream& RqHeaders){
 	std::string buffer;
 	std::getline(RqHeaders, buffer);
-
 	while (std::getline(RqHeaders, buffer))
 	{
         if (buffer == "\r")
 			break;
+        std::cerr << "Request Body: " << buffer << std::endl;
 		size_t pos = buffer.find(':', 0);
 		if (pos != std::string::npos){
             if (buffer.substr(0, pos) == "Content-Length"){
-                _contentLength = Library::stoi(buffer.substr(pos + 2));
+                size_t endPos = buffer.find("\r", pos + 2);
+                if (endPos != std::string::npos) {
+                    std::string lenStr = buffer.substr(pos + 2, endPos - (pos + 2));
+                    this->_contentLength = Library::stoi(lenStr);
+                    if (this->_contentLength > std::numeric_limits<int>::max())
+                        this->_contentLength = -1;
+                }
             }
             std::string value = buffer.substr(pos + 2);
 			_headers[buffer.substr(0, pos)] = value.erase(value.find_last_not_of("\t"));        
@@ -232,7 +239,7 @@ std::vector<FormPart>               Request::MultipartBody(const std::string& bo
     size_t next;
     std::vector<FormPart> allpart;
     std::string cont;
-
+    
     if ( _contentLength > MAX_SIZE){
         std::ifstream   _file;
         _file.open(body.c_str(), std::ios::binary);
@@ -244,6 +251,7 @@ std::vector<FormPart>               Request::MultipartBody(const std::string& bo
     else{
         cont = body;
     }
+    // std::cerr << "body: " << cont << std::endl;
     while ((next = cont.find(del, pos)) != std::string::npos) {
         if (next > pos) {
             std::string part = cont.substr(pos, next - pos);

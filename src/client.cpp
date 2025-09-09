@@ -226,35 +226,36 @@ void Client::PostMethod(Request& req, Response& res){
         this->_respoBuf = res.ErrorResponse(400, this->server.error_pages);
         return;
     }
-    if (conType.find("multipart/form-data") != std::string::npos){
-        std::string body;
-        if (_contentLength > MAX_SIZE){
-            body = _requfilename;}
-        else{
-            body = req.getBody();}
-        std::vector<FormPart> content = req.MultipartBody(body, conType);
-        if (content.empty()){this->_respoBuf =  res.ErrorResponse(400, this->server.error_pages); return;}
-        std::map<std::string, std::string> form;
-        for (std::vector<FormPart>::const_iterator it = content.begin(); it != content.end(); ++it) {
-            const FormPart& part = *it;
-            if (!part.filename.empty()) {
-                std::string uploadPath =  Library::getUploadFilename(req.loc_config.upload_path, part.filename, _toString(_lastActive));
-                std::ofstream out(uploadPath.c_str(), std::ios::binary);
-                if (!out.is_open()) {this->_respoBuf = res.ErrorResponse(500, this->server.error_pages);return;}
-                out.write(part.content.c_str(), part.content.size());
-                out.close();
-            } else {
-                form[part.name] = part.content;
-            }
-        }
-        this->_respoBuf = res.ErrorResponse(201, this->server.error_pages);
-    }
-    else if (conType.find("application/x-www-form-urlencoded") != std::string::npos){
+    //res._MimeTypes(req.getHeadr("Content-Type"))
+    std::string cotype = res._MimeTypes(req.getHeadr("Content-Type"));
+    if (conType.find("application/x-www-form-urlencoded") != std::string::npos){
         std::map<std::string, std::string> query = req.FormUrlDec(req.getQuery()); 
         std::map<std::string, std::string> content = req.FormUrlDec(req.getBody()); 
         std::string body = Library::getJsonResponse(query, content);
         std::string headers = res.getHeaderResponse(".json", body.size(), 200) + res.Connectionstatus("close");
         this->_respoBuf = headers + body;
+    }
+    else if (cotype != "-1"){
+        std::string conTy = res._MimeTypes(req.getHeadr("Content-Type"));
+        std::string uploadPath =  Library::getUploadFilename(req.loc_config.upload_path, conTy, _toString(_lastActive));
+        std::cerr << "Upload Path: " << uploadPath << std::endl;
+        int fd = open(uploadPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (fd == -1) {this->_respoBuf = res.ErrorResponse(500, this->server.error_pages);return;}
+        if (_contentLength > MAX_SIZE){
+            int fdtmp = open(_requfilename.c_str(), O_RDONLY);
+            if (fdtmp == -1) {this->_respoBuf = res.ErrorResponse(500, this->server.error_pages);return;}
+            dup2(fd, fdtmp);
+            close(fd);
+            close(fdtmp);
+        }
+        else{
+            write(fd, req.getBody().c_str(), req.getBody().size());
+            close(fd);
+        }
+        this->_respoBuf = res.ErrorResponse(201, this->server.error_pages);
+    }
+    else {
+        this->_respoBuf = res.ErrorResponse(403, this->server.error_pages);
     }
 }
 void Client::DeleteMethod(Request& req) {
