@@ -79,7 +79,6 @@ void Client::readlargeFileRequest(const char *buf, ssize_t byRead){
         size_t headerEnd = this->_requBuf.find("\r\n\r\n");
         if (headerEnd != std::string::npos) {
             int bodySize = Library::FileSize(this->_requfilename);
-            std::cerr << "Body Size: " << bodySize << " / Content-Length: " << this->_contentLength << std::endl;
             if (bodySize  >= this->_contentLength) {
                 this->requCheckcomp = true;
             }
