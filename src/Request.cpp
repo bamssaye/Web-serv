@@ -60,7 +60,6 @@ void                                Request::_parseHeaderFields(std::istringstre
 	{
         if (buffer == "\r")
 			break;
-        std::cerr << "Request Body: " << buffer << std::endl;
 		size_t pos = buffer.find(':', 0);
 		if (pos != std::string::npos){
             if (buffer.substr(0, pos) == "Content-Length"){
