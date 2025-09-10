@@ -1,0 +1,4 @@
+http://localhost:8080/
+http://localhost:8080/index.html
+http://localhost:8080/gnawa1.mp4
+http://localhost:8080/cgi-bin/test.cgi
