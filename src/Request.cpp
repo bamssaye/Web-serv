@@ -7,7 +7,6 @@ Request::Request(std::string& reqMsg):_boday(""),_isvalid(false), _contentLength
     std::istringstream ss(reqMsg);
     std::string reqLine;
     std::getline(ss, reqLine);
-    std::cerr << "Request Line: " << reqLine << std::endl;
     this->_parseRequestLine(reqLine);
     this->_parseHeaderFields(ss);
     size_t pos_end = reqMsg.find("\r\n\r\n");

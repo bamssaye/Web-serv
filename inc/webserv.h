@@ -37,8 +37,8 @@
 #include <signal.h>
 
 #define MAX_EVENTS  10 // MAX event 
-#define BUFFER_SIZE 1024 // 8kb
-#define MAX_SIZE    524288 // 500kb
+#define BUFFER_SIZE 8192 // 8kb
+#define MAX_SIZE    324288 // 500kb
 #define CGI_BUFSIZE 4096 
 
 struct FormPart {

@@ -78,7 +78,7 @@ void Client::readlargeFileRequest(const char *buf, ssize_t byRead){
     if (this->requCheck && !this->requCheckcomp) {
         size_t headerEnd = this->_requBuf.find("\r\n\r\n");
         if (headerEnd != std::string::npos) {
-            int bodySize = Library::FileSize(this->_requfilename);
+            int bodySize = this->_readBuffer.tellp();
             if (bodySize  >= this->_contentLength) {
                 this->requCheckcomp = true;
             }
@@ -115,15 +115,6 @@ void Client::readnextChunk() {
     _file.read(buffer, 8192);
     std::streamsize bytesRead = _file.gcount();
     if (bytesRead > 0) {
-    //     long long size = bytesRead + _respoBuf.size();
-    //     Response res;
-    // std::string headers = res.getHeaderResponse(this->filename, size, 200) + res.Connectionstatus("clo se");
-    // this->_respoBuf = headers;
-    // if (Library::FileSize(this->filename) > size) {
-    //     this->_sendingFile = true;
-    // }
-    // this->_sendingFile = true;
-
         _respoBuf.append(buffer, bytesRead);
     } else {
         _file.close();
@@ -137,10 +128,8 @@ void Client::readlargeFile(Request& req, Response& res){
         this->_sendingFile = false;
         return;
     }
-    // (void)res;
     if (req.getHeadr("Range") != "") 
     {
-        // Handle Range requests for partial content delivery
         std::string rangeHeader = req.getHeadr("Range");
         size_t eqPos = rangeHeader.find('=');
         if (eqPos != std::string::npos) {
@@ -281,7 +270,6 @@ void Client::PostMethod(Request& req, Response& res){
     else if (cotype != "-1"){
         std::string conTy = res._MimeTypes(req.getHeadr("Content-Type"));
         std::string uploadPath =  Library::getUploadFilename(req.loc_config.upload_path, conTy, _toString(_lastActive));
-        std::cerr << "Upload Path: " << uploadPath << std::endl;
         int fd = open(uploadPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
         if (fd == -1) {this->_respoBuf = res.ErrorResponse(500, this->server.error_pages);return;}
         if (_contentLength > MAX_SIZE){

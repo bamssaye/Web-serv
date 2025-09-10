@@ -113,7 +113,6 @@ void Server::_readEvent(int epollFd, int fd){
 
 /// ///// Read Request from Client {Request > 1MB convert to file Mode}
 void Server::_ReadContent(char *buf, ssize_t byRead, int cliFd){
-    
     if (_Clients[cliFd]->getRequHeaderCheck()){
         size_t len = _Clients[cliFd]->getContentLength();
         if (len > MAX_SIZE){
@@ -231,9 +230,10 @@ void Server::checkTimeouts() {
                 it->second->cgi_running = false;
                 it->second->cgi_pid = -1;
                 it->second->setResponse(parseCgiOutput(it->second->cgi_output, req));
+                it->second->cgi_output.clear();
             }
-            else if (std::difftime(std::time(NULL), it->second->startTime) > 10) {
-            Response res;
+            else if (std::difftime(std::time(NULL), it->second->startTime) > 6) {
+                Response res;
                 kill(it->second->cgi_pid, SIGKILL);
                 it->second->close_cgi();
                 it->second->cgi_running = false;
@@ -241,6 +241,10 @@ void Server::checkTimeouts() {
                 it->second->setResponse(res.ErrorResponse(504, this->_server.error_pages));
             }
             _writeEvent(this->_epollFd, it->first);
+            if (!it->second->cgi_running){
+                ++it;
+                continue;
+            }
         }
         if (it->second->timeOut()) {
             int fd_to_close = it->first;

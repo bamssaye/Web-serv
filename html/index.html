@@ -18,7 +18,6 @@
 </head>
 <body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
     
-    <!-- Starfield Background -->
     <div id="starfield" class="absolute top-0 left-0 w-full h-full"></div>
 
     <div class="text-center z-10 p-8 bg-black bg-opacity-50 rounded-2xl backdrop-blur-sm border border-blue-500/30">
@@ -26,23 +25,28 @@
             <h1 class="main-title text-8xl md:text-9xl font-bold text-blue-400">WEBSERV</h1>
             <div class="rocket absolute -top-10 -right-20 text-6xl">🚀</div>
         </div>
-        <h2 class="mt-8 text-3xl md:text-4xl font-bold text-gray-200">WELCOME TO THE GALAXY</h2>
+        <h2 class="mt-8 text-3xl md:text-4xl font-bold text-gray-200">TEST YOUR SERVER</h2>
         
-        <div class="mt-8 space-x-4">
-             <a href="/cgi-bin/test.php" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
-                Test CGI
-            </a>
-            <a href="multipart.html" class="inline-block bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
-                Test Upload
-            </a>
-            <a href="movie.html" class="inline-block bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
-                Watch Movie
-            </a>
+        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <a href="/cgi-bin/test.php" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+               Test CGI
+           </a>
+           <a href="/delete_test.html" class="inline-block bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+               Test DELETE
+           </a>
+           <a href="/multipart.html" class="inline-block bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+               Test Upload
+           </a>
+           <a href="/movie.html" class="inline-block bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+               Test Movie
+           </a>
+           <a href="/cgi-bin/test2.php" class="inline-block bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+               Test cookies
+           </a>
         </div>
     </div>
 
     <script>
-        // Starfield Generation
         const starfield = document.getElementById('starfield');
         for (let i = 0; i < 200; i++) {
             const star = document.createElement('div');
